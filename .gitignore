@@ -1,0 +1,21 @@
+# Executables
+*.out
+*.exe
+a.out
+
+# Object files
+*.o
+
+# CUDA files
+*.ptx
+*.cubin
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Your own executables (add as you go)
+*.cu~
+
+# Personal ssh commands
+SSHQuickReference.txt
