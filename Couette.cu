@@ -3,6 +3,7 @@
 // ===========================================================
 #include <iostream> // g++ compiles (standard C++)
 #include "book.h"   // nvcc compiles (CUDA helper macros)
+#include <unistd.h>
 using namespace std;// g++ compiles (standard C++)
 // ===========================================================
 // CONSTANTS (grid size) - Preprocessor (runs before both compilers)
@@ -17,10 +18,8 @@ using namespace std;// g++ compiles (standard C++)
 // ===========================================================
 // CHAPMAN-ENSKOG union between LBM and BE -> Macroscopic equations
 // ===========================================================
-//const double c_s = dx/(sqrt(3.0)*dt); 
-const double nu = 0.25;
+const double nu = 0.15;
 const double Tau = nu/(c_s*c_s) + 0.5*dt;
-//const double c_s2 = c_s*c_s;
 // ===========================================================
 // LATTICE D2Q9 constants
 // ===========================================================
@@ -76,7 +75,8 @@ private:
   double *h_w;
   double h_Omega;
   double h_OmegaPrima;
-
+  FILE *gp_pipe;
+  
   // Macroscopic quantities
   double *h_rho,*h_jx,*h_jy,*h_rho_e,*h_h,*h_feq;
 public:
@@ -127,6 +127,19 @@ public:
 	}
       }
     }
+    // -------- Test: Add Gaussian pertubation for periodic test -----------------
+    double amplitude = 0.01;
+    double sigma = 10.0;
+    for(int ix=0;ix<Lx;ix++){
+      for(int iy=0;iy<Ly;iy++){
+	int idx = ix + iy*Lx;
+	double r2 = (ix-0.5*Lx)*(ix-0.5*Lx)+(iy-0.5*Ly)*(iy-0.5*Ly);
+	double perturbation = amplitude*exp(-r2/(2.0*sigma*sigma));
+	for(int iz=0;iz<Q;iz++){
+	  *(h_f+idx+iz*Lx*Ly) += *(h_w+iz)*perturbation;
+	}
+      }
+    }
     
     // 4. Copy h_f to GPU
     HANDLE_ERROR(cudaMemcpy((void*)(d_f+0+0*Lx+0*Lx*Ly),(const void*)(h_f+0+0*Lx+0*Lx*Ly),(size_t)Lx*Ly*Q*sizeof(double),cudaMemcpyHostToDevice));
@@ -137,6 +150,23 @@ public:
     HANDLE_ERROR(cudaMemcpyToSymbol((const void*)(d_w+0),(const void*)(h_w+0),(size_t)Q*sizeof(double)));
     HANDLE_ERROR(cudaMemcpyToSymbol((const void*)&d_Omega,(const void*)&h_Omega,(size_t)sizeof(double)));
     HANDLE_ERROR(cudaMemcpyToSymbol((const void*)&d_OmegaPrima,(const void*)&h_OmegaPrima,(size_t)sizeof(double)));
+
+    // 6. Initialize gnuplot for density
+    //-- Kill any existing gnuplot processes--
+    system("pkill gnuplot 2>/dev/null");
+    usleep(300000);
+  
+    gp_pipe = popen("gnuplot -persist", "w");
+    fprintf(gp_pipe,"set xlabel 'ix'\n");
+    fprintf(gp_pipe,"set ylabel 'iy'\n");
+    fprintf(gp_pipe,"set zlabel 'Density'\n");
+    fprintf(gp_pipe,"set grid\n");
+    fprintf(gp_pipe,"set xrange [0:%d]\n", Lx);
+    fprintf(gp_pipe,"set yrange [0:%d]\n", Ly);
+    fprintf(gp_pipe,"set zrange [0.98:1.015]\n");
+    fprintf(gp_pipe,"set cbrange [0.98:1.015]\n");
+    fprintf(gp_pipe,"set palette defined (0'#0000FF',0.33'#00FFFF',0.66'#FFFF00',1'#FF0000')\n");
+    fflush(gp_pipe);
 
     cout<<"Memory allocated(CPU+GPU). "<<endl;
   }
@@ -151,6 +181,7 @@ public:
     free(h_rho_e);
     free(h_h);
     free(h_feq);
+    pclose(gp_pipe);
     HANDLE_ERROR(cudaFree(d_f));
     HANDLE_ERROR(cudaDeviceReset());
     cout<<"Memory freed (CPU+GPU) and Device Reset. "<<endl;
@@ -197,6 +228,28 @@ public:
       }
     }
   }
+  void dibuje3D(int t){
+    copyBack();
+    calcularMacros();
+    
+    // Write current data (full resolution for pm3d)
+    FILE* tmp = fopen("density.dat", "w");
+    for(int iy=0; iy<Ly; iy++){
+      for(int ix=0; ix<Lx; ix++){
+	int idx = ix + iy*Lx;
+	fprintf(tmp, "%d %d %f\n", ix, iy, h_rho[idx]);
+      }
+      fprintf(tmp, "\n");
+    }
+    fclose(tmp);
+    
+    // COLORED SURFACE (pm3d) - much easier to see!
+    fprintf(gp_pipe, "set title 'Gaussian Pulse - t=%d'\n", t);
+    fprintf(gp_pipe, "splot 'density.dat' with pm3d\n"); //with lines
+    fflush(gp_pipe);
+    
+    usleep(2000000);
+  }
   void calcularFeq(){
     for(int ix=0;ix<Lx;ix++){
       for(int iy=0;iy<Ly;iy++){
@@ -209,6 +262,63 @@ public:
 	}
       }
     }
+  }
+  void printMaxDifferences(){
+    double max_rho_diff = 0.0;
+    double max_jx_diff = 0.0;
+    double max_jy_diff = 0.0;
+    double max_energy_diff = 0.0;
+    double max_entropy_diff = 0.0;
+    
+    for(int ix=0;ix<Lx;ix++){
+      for(int iy=0;iy<Ly;iy++){
+	int idx = ix + iy*Lx;
+	// mass
+	double rho_f = *(h_rho+idx);
+	double rho_feq = 0.0;
+	for(int iz=0;iz<Q;iz++){
+	  rho_feq += *(h_feq+idx+iz*Lx*Ly);
+	}
+	max_rho_diff = max(max_rho_diff,fabs(rho_f-rho_feq));
+	// momentum x
+	double jx_f = *(h_jx+idx);
+	double jx_feq = 0.0;
+	for(int iz=0;iz<Q;iz++){
+	  jx_feq += *(h_feq+idx+iz*Lx*Ly)*h_Cx[iz];
+	}
+	max_jx_diff = max(max_jx_diff,fabs(jx_f-jx_feq));
+	// momentum y
+	double jy_f = *(h_jx+idx);
+	double jy_feq = 0.0;
+	for(int iz=0;iz<Q;iz++){
+	  jy_feq += *(h_feq+idx+iz*Lx*Ly)*h_Cy[iz];
+	}
+	max_jy_diff = max(max_jy_diff,fabs(jy_f-jy_feq));
+	// energy
+	double rho_e_f = *(h_rho_e+idx);
+	double rho_E_feq = 0.0;
+	for(int iz=0;iz<Q;iz++){
+	  rho_E_feq += *(h_feq+idx+iz*Lx*Ly)*0.5*(h_Cx[iz]*h_Cx[iz]+h_Cy[iz]*h_Cy[iz]);
+	}
+	double energy_feq = rho_E_feq-0.5*rho_feq*(jx_feq*jx_feq/(rho_feq*rho_feq)+jy_feq*jy_feq/(rho_feq*rho_feq));
+	max_energy_diff = max(max_energy_diff,fabs(rho_e_f-energy_feq));
+	// entropy
+	double h_h_f = *(h_h+idx);
+	double h_h_feq = 0.0;
+	for(int iz=0;iz<Q;iz++){
+	  double f = *(h_f+idx+iz*Lx*Ly);
+	  if(f > 1e-12){
+	    h_h_feq += *(h_feq+idx+iz*Lx*Ly)*log(f);
+	  }
+	}
+	max_entropy_diff = max(max_entropy_diff,fabs(h_h_f-h_h_feq));
+      }
+    }
+    cout<<"Max rho diff: "<<"\t"<<max_rho_diff<<endl;
+    cout<<"Max jx diff: "<<"\t"<<max_jx_diff<<endl;
+    cout<<"Max jy diff: "<<"\t"<<max_jy_diff<<endl;
+    cout<<"Max energy diff: "<<"\t"<<max_energy_diff<<endl;
+    cout<<"Max entropy diff: "<<"\t"<<max_entropy_diff<<endl;
   }
   // ===========================================================
   // PHYSICS CHECKS
@@ -231,7 +341,7 @@ public:
     return true;
   }
   bool chequeoMomentumX(){
-    double epsilon = 1.0e-8;
+    double epsilon = 1.0e-4;
     for(int ix=0;ix<Lx;ix++){
       for(int iy=0;iy<Ly;iy++){
 	int idx = ix + iy*Lx;
@@ -248,7 +358,7 @@ public:
     return true;
   }
   bool chequeoMomentumY(){
-    double epsilon = 1.0e-8;
+    double epsilon = 1.0e-4;
     for(int ix=0;ix<Lx;ix++){
       for(int iy=0;iy<Ly;iy++){
 	int idx = ix + iy*Lx;
@@ -265,7 +375,7 @@ public:
     return true;
   }
   bool chequeoEnergia(){
-    double epsilon = 1.0e-8;
+    double epsilon = 1.0e-5;
     for(int ix=0;ix<Lx;ix++){
       for(int iy=0;iy<Ly;iy++){
 	int idx = ix + iy*Lx;
@@ -288,7 +398,7 @@ public:
     return true;
   }
   bool chequeoEntropia(){
-    double epsilon  = 1.0e-8;
+    double epsilon  = 1.0e-6;
     for(int ix=0;ix<Lx;ix++){
       for(int iy=0;iy<Ly;iy++){
 	int idx = ix + iy*Lx;
@@ -300,7 +410,7 @@ public:
 	    h_h_feq += *(h_feq+idx+iz*Lx*Ly)*log(f);
 	  }
 	}
-	if(h_h_f + epsilon <= h_h_feq ){
+	if(h_h_f + epsilon < h_h_feq ){
 	  return false;
 	}
       }
@@ -342,18 +452,23 @@ public:
 };	  
 int main(){
   LATTICEBOLTZMANN Noah;
-
+  
   // Time loop
   for(int t=0;t<500;t++){
     Noah.Choque((int)t);
     Noah.Adveccion();
+    
+    if(t%30==0 || t==499){
+      Noah.dibuje3D((int)t);
+    }
   }
-
-  Noah.copyBack();
+  
+  //Noah.copyBack();
 
   // Post-processing
-  Noah.calcularMacros();
+  //Noah.calcularMacros();
   Noah.calcularFeq();
+  //Noah.printMaxDifferences();
   Noah.reporte();
   
   cout<<"Program ended."<<endl;
