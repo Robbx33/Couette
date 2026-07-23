@@ -2,9 +2,10 @@
 #ifndef PHYSICSCHECKER_H
 #define PHYSICSCHECKER_H
 
+#include "LBM.h"
 #include <cstdio>
 
-class LATTICEBOLTZMANN;
+//class LATTICEBOLTZMANN;
 
 class PHYSICSCHECKER{
 private:
@@ -15,6 +16,8 @@ public:
   PHYSICSCHECKER(LATTICEBOLTZMANN *Noah);
   ~PHYSICSCHECKER();
   void plotCollisionConservation_RestrictionErrors(int t);
+  /*void printSummary();
+    void printReport();*/
 };
 
 #endif

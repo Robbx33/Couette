@@ -1,10 +1,16 @@
 // PhysicsChecker.cu
 #include "PhysicsChecker.h"
 #include "LBM.h"
+#include "Constants.h"
 #include <unistd.h>
+#include <iostream>
+using namespace std;
 
 PHYSICSCHECKER::PHYSICSCHECKER(LATTICEBOLTZMANN *Noah){
   lbm = Noah;
+  
+  system("pkill gnuplot 2>/dev/null");
+  usleep(300000);
   
   gp_pipe_mass    = popen("gnuplot -persist","w");
   gp_pipe_momX    = popen("gnuplot -persist","w");
@@ -157,7 +163,7 @@ void PHYSICSCHECKER::plotCollisionConservation_RestrictionErrors(int t){
   fclose(tmpY);
   fclose(tmpE);
   fclose(tmpH);
-  
+ 
   // Plot mass error in its own window
   fprintf(gp_pipe_mass,"set title 'Collision Mass Conservation Error - t=%d (max=%e)'\n",t,max_mass);
   fprintf(gp_pipe_mass,"splot 'mass_error_3D.dat' with points pt 5 ps 0.5 palette\n");
@@ -185,3 +191,17 @@ void PHYSICSCHECKER::plotCollisionConservation_RestrictionErrors(int t){
   
   usleep(2000000);
 }
+
+/*void PHYSICSCHECKER::printSummary(){
+  // Print one-line summary of current diagnostics
+  // You can implement this to show max values
+  cout<<"Diagnostics OK"<<endl;
+}
+
+void PHYSICSCHECKER::printReport(){
+  cout<<"Collision Mass Conservation: OK"<<endl;
+  cout<<"Collision Momentum X Conservation: OK"<<endl;
+  cout<<"Collision Momentum Y Conservation: OK"<<endl;
+  cout<<"Collision Energy Conservation: OK"<<endl;
+  cout<<"Collision Entropy Restriction: OK"<<endl;
+  }*/
