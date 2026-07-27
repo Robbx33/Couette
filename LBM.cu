@@ -1,24 +1,20 @@
 // LBM.cu
 #include "LBM.h"
 #include "Constants.h"
-//#include "KernelsManager.h"
 #include "error.h"
-#include "Kernels.cuh"
 #include <iostream>
 #include <unistd.h>
 using namespace std;
-// ===========================================================
-// LATTICE CONSTANTS (extern definitions for main.cu)
-// ===========================================================
-//const double RHO0=1.0,UX0=0.0,UY0=0.0;
-//const double nu = 0.15;   
-//const double Tau = nu/c_s2 + 0.5*dt;
 
 // ===========================================================
 // CONSTRUCTOR
 // ===========================================================
 
 LATTICEBOLTZMANN::LATTICEBOLTZMANN(){
+  // Kill gnuplot ONCE at the very beginning
+  system("pkill gnuplot 2>/dev/null");
+  usleep(300000);
+  
   // Allocate host memory
   h_f     = (double*)malloc(Lx*Ly*Q*sizeof(double));
   h_Cx    = (int*)malloc(Q*sizeof(int));
@@ -33,20 +29,15 @@ LATTICEBOLTZMANN::LATTICEBOLTZMANN(){
   
   // Allocate device memory
   CUDA_CHECK(cudaMalloc((void**)&d_f,Lx*Ly*Q*2*sizeof(double)));
-  CUDA_CHECK(cudaMalloc((void**)&d_Cx,Lx*Ly*Q*sizeof(double)));
-  CUDA_CHECK(cudaMalloc((void**)&d_Cy,Lx*Ly*Q*sizeof(double)));
-  CUDA_CHECK(cudaMalloc((void**)&d_w,Lx*Ly*Q*sizeof(double)));
+  CUDA_CHECK(cudaMalloc((void**)&d_Cx,Q*sizeof(int)));
+  CUDA_CHECK(cudaMalloc((void**)&d_Cy,Q*sizeof(int)));
+  CUDA_CHECK(cudaMalloc((void**)&d_w,Q*sizeof(double)));
   CUDA_CHECK(cudaMalloc((void**)&d_rho,Lx*Ly*sizeof(double)));
   CUDA_CHECK(cudaMalloc((void**)&d_jx,Lx*Ly*sizeof(double)));
   CUDA_CHECK(cudaMalloc((void**)&d_jy,Lx*Ly*sizeof(double)));
   CUDA_CHECK(cudaMalloc((void**)&d_rho_e,Lx*Ly*sizeof(double)));
   CUDA_CHECK(cudaMalloc((void**)&d_h,Lx*Ly*sizeof(double)));
   CUDA_CHECK(cudaMalloc((void**)&d_feq,Lx*Ly*Q*sizeof(double)));
-  /*CUDA_CHECK(cudaMalloc((void**)&d_mass_err,Lx*Ly*sizeof(double)));
-    CUDA_CHECK(cudaMalloc((void**)&d_momX_err,Lx*Ly*sizeof(double)));
-    CUDA_CHECK(cudaMalloc((void**)&d_momY_err,Lx*Ly*sizeof(double)));
-    CUDA_CHECK(cudaMalloc((void**)&d_energy_err,Lx*Ly*sizeof(double)));
-    CUDA_CHECK(cudaMalloc((void**)&d_entropy_diff,Lx*Ly*sizeof(double)));*/
   
   // Set lattice constants
   *h_Cx     = 0;  *h_Cy     = 0;
@@ -62,10 +53,7 @@ LATTICEBOLTZMANN::LATTICEBOLTZMANN(){
   *h_w = 4.0/9.0;
   *(h_w+1) = *(h_w+2) = *(h_w+3) = *(h_w+4) = 1.0/9.0;
   *(h_w+5) = *(h_w+6) = *(h_w+7) = *(h_w+8) = 1.0/36.0;
-  
-  h_Omega = dt/Tau;
-  h_OmegaPrima = 1.0 - h_Omega;
-  
+    
   // Initialize f with equilibrium (rho=1.0, ux=0, uy=0)
   for(int ix=0;ix<Lx;ix++){
     for(int iy=0;iy<Ly;iy++){
@@ -95,9 +83,7 @@ LATTICEBOLTZMANN::LATTICEBOLTZMANN(){
   CUDA_CHECK(cudaMemcpy((void*)(d_Cx+0),(const void*)(h_Cx+0),(size_t)Q*sizeof(int),cudaMemcpyHostToDevice));
   CUDA_CHECK(cudaMemcpy((void*)(d_Cy+0),(const void*)(h_Cy+0),(size_t)Q*sizeof(int),cudaMemcpyHostToDevice));
   CUDA_CHECK(cudaMemcpy((void*)(d_w+0),(const void*)(h_w+0),(size_t)Q*sizeof(double),cudaMemcpyHostToDevice));
-  CUDA_CHECK(cudaMemcpy((void*)&d_Omega,(const void*)&h_Omega,(size_t)sizeof(double),cudaMemcpyHostToDevice));
-  CUDA_CHECK(cudaMemcpy((void*)&d_OmegaPrima,(const void*)&h_OmegaPrima,(size_t)sizeof(double),cudaMemcpyHostToDevice));
-  
+
   // Initialize gnuplot
   /*system("pkill gnuplot 2>/dev/null");
     usleep(300000);
@@ -138,8 +124,6 @@ LATTICEBOLTZMANN::~LATTICEBOLTZMANN(){
   free(h_Cx);
   free(h_Cy);
   free(h_w);
-  /*free(h_Omega);
-    free(h_OmegaPrima);*/
   free(h_rho);
   free(h_jx);
   free(h_jy);
@@ -152,8 +136,6 @@ LATTICEBOLTZMANN::~LATTICEBOLTZMANN(){
   CUDA_CHECK(cudaFree(d_Cx));
   CUDA_CHECK(cudaFree(d_Cy));
   CUDA_CHECK(cudaFree(d_w));
-  /*CUDA_CHECK(cudaFree(d_Omega));
-    CUDA_CHECK(cudaFree(d_OmegaPrima));*/
   CUDA_CHECK(cudaFree(d_rho));
   CUDA_CHECK(cudaFree(d_jx));
   CUDA_CHECK(cudaFree(d_jy));

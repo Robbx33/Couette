@@ -4,22 +4,22 @@
 
 #include <cmath>
 
-// Compile-time constants
-static constexpr int Lx = 128;
-static constexpr int Ly = 128;
-static constexpr int Q = 9;
-static constexpr double dt = 1.0;
-static constexpr double dx = 1.0;
-
-// Macros for device and host
+// ALL MACROS for device/host
+#define Lx 128
+#define Ly 128
+#define Q 9
 #define dt 1.0
 #define dx 1.0
 #define c_s (dx/(sqrt(3.0)*dt))
-#define c_s2 c_s*c_s
+#define c_s2 (c_s*c_s)
+#define nu 0.15
+#define Tau (nu/c_s2 + 0.5*dt)
+#define Omega (dt/Tau)
+#define OmegaPrima (1.0 - Omega)
 
 // Physical constants
-static const double RHO0=1.0,UX0=0.0,UY0=0.0;
-static const double nu  = 0.15;
-static const double Tau = nu/c_s2 + 0.5*dt;
+#define RHO0 1.0
+#define UX0 0.0
+#define UY0 0.0
 
 #endif

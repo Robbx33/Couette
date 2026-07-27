@@ -4,7 +4,7 @@
 #include "Kernels.cuh"
 #include "error.h"
 
-KernelsManager::KernelsManager(int Lx,int Ly){
+KernelsManager::KernelsManager(){
   /*  nx = Lx_;
   ny = Ly_;*/
 
@@ -21,8 +21,8 @@ KernelsManager::~KernelsManager(){
 
 }
 
-void KernelsManager::launchCollision(double *d_f,int *d_Cx,int *d_Cy,double *d_w,double d_Omega,double d_OmegaPrima){
-  collisionKernel<<<gridSize3D,blockSize3D>>>((double*) d_f,(int*) d_Cx,(int*) d_Cy,(double*) d_w,(double) d_Omega,(double) d_OmegaPrima);
+void KernelsManager::launchCollision(double *d_f,int *d_Cx,int *d_Cy,double *d_w){
+  collisionKernel<<<gridSize3D,blockSize3D>>>((double*) d_f,(int*) d_Cx,(int*) d_Cy,(double*) d_w);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
@@ -33,20 +33,20 @@ void KernelsManager::launchStream(double *d_f,int *d_Cx,int *d_Cy){
   SYNC_CHECK();
 }
 
-/*void KernelsManager::launchComputeMacros(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h){
-  computeMacrosKernel<<<gridSize2D,blockSize2D>>>((double*) d_f,(double*) d_rho,(double*) d_jx,(double*) d_jy,(double*) d_rho_e,(double*) d_h);
+void KernelsManager::launchComputeMacros(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h){
+  computeMacrosKernel<<<gridSize2D,blockSize2D>>>((double*) d_f,(int*) d_Cx,(int*) d_Cy,(double*) d_rho,(double*) d_jx,(double*) d_jy,(double*) d_rho_e,(double*) d_h);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
 
-void KernelsManager::launchComputeFeq(double *d_rho,double *d_jx,double *d_jy,double *d_feq){
-  computeFeqKernel<<<gridSize3D,blockSize3D>>>((double*) d_rho,(double*) d_jx,(double*) d_jy,(double*) d_feq);
+void KernelsManager::launchComputeFeq(int *d_Cx,int *d_Cy,double *d_w,double *d_rho,double *d_jx,double *d_jy,double *d_feq){
+  computeFeqKernel<<<gridSize3D,blockSize3D>>>((int*) d_Cx,(int*) d_Cy,(double*) d_w,(double*) d_rho,(double*) d_jx,(double*) d_jy,(double*) d_feq);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
 
-void KernelsManager::launchComputeErrors(double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_f,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_entropy_diff){
-  computeErrorsKernel<<<gridSize2D,blockSize2D>>>((double*) d_rho,(double*) d_jx,(double*) d_jy,(double*) d_rho_e,(double*) d_h,(double*) d_feq,(double*) d_f,(double*) d_mass_err,(double*) d_momX_err,(double*) d_momY_err,(double*) d_energy_err,(double*) d_entropy_diff,(double*) NULL,(double*) NULL,(double*) NULL,(double*) NULL,(double*) NULL,(double*) NULL);
+void KernelsManager::launchComputeErrors(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
+  computeErrorsKernel<<<gridSize2D,blockSize2D>>>((double*) d_f,(int*) d_Cx,(int*) d_Cy,(double*) d_rho,(double*) d_jx,(double*) d_jy,(double*) d_rho_e,(double*) d_h,(double*) d_feq,(double*) d_mass_err,(double*) d_momX_err,(double*) d_momY_err,(double*) d_energy_err,(double*) d_hfhfeq_diff);
   KERNEL_CHECK();
   SYNC_CHECK();
-  }*/
+  }

@@ -7,7 +7,7 @@
 // =========================================================================
 // COLLISION KERNEL
 // =========================================================================
-__global__ void collisionKernel(double *d_f,int *d_Cx,int *d_Cy,double *d_w,double d_Omega,double d_OmegaPrima){
+__global__ void collisionKernel(double *d_f,int *d_Cx,int *d_Cy,double *d_w){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
   int k = threadIdx.z;
@@ -24,7 +24,7 @@ __global__ void collisionKernel(double *d_f,int *d_Cx,int *d_Cy,double *d_w,doub
     
     double feq = d_w[k]*rho*(1.0+(d_Cx[k]*jx/rho+d_Cy[k]*jy/rho)/c_s2+0.5*(d_Cx[k]*jx/rho+d_Cy[k]*jy/rho)*(d_Cx[k]*jx/rho+d_Cy[k]*jy/rho)/(c_s2*c_s2)-0.5*(jx*jx/(rho*rho)+jy*jy/(rho*rho))/c_s2);
     
-    *(d_f+id+(k+Q)*Lx*Ly) = *(d_f+id+k*Lx*Ly)*d_OmegaPrima + d_Omega*feq; 
+    *(d_f+id+(k+Q)*Lx*Ly) = *(d_f+id+k*Lx*Ly)*OmegaPrima + Omega*feq; 
   }
 }
 
@@ -43,11 +43,11 @@ __global__ void streamKernel(double *d_f,int *d_Cx,int *d_Cy){
     *(d_f+dest_i+dest_j*Lx+k*Lx*Ly) = *(d_f+i+j*Lx+(k+Q)*Lx*Ly);
   }
 }
-/*
+
 // =========================================================================
 // COMPUTE MACROS KERNEL
 // =========================================================================
-__global__ void computeMacrosKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h){
+__global__ void computeMacrosKernel(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
 
@@ -69,14 +69,14 @@ __global__ void computeMacrosKernel(double *d_f,double *d_rho,double *d_jx,doubl
     *(d_rho+id) = rho;
     *(d_jx+id)  = jx;
     *(d_jy+id)  = jy;
-    *(d_rho_e+id) = rhoE + rho*(jx*jx/(rho*rho)+jy*jy/(rho*rho));
+    *(d_rho_e+id) = rhoE - 0.5*rho*(jx*jx/(rho*rho)+jy*jy/(rho*rho));
     *(d_h+id) = h;
   }
 }
 // =========================================================================
 // COMPUTE FEQ KERNEL
 // =========================================================================
-__global__ void computeFeqKernel(double *d_rho,double *d_jx,double *d_jy,double *d_feq){
+__global__ void computeFeqKernel(int *d_Cx,int *d_Cy,double *d_w,double *d_rho,double *d_jx,double *d_jy,double *d_feq){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
   int k = threadIdx.z;
@@ -90,10 +90,11 @@ __global__ void computeFeqKernel(double *d_rho,double *d_jx,double *d_jy,double 
     *(d_feq+id+k*Lx*Ly) = d_w[k]*rho*(1.0+(d_Cx[k]*jx/rho+d_Cy[k]*jy/rho)/c_s2+0.5*(d_Cx[k]*jx/rho+d_Cy[k]*jy/rho)*(d_Cx[k]*jx/rho+d_Cy[k]*jy/rho)/(c_s2*c_s2)-0.5*(jx*jx/(rho*rho)+jy*jy/(rho*rho))/c_s2);
   }
 }
+
 // =========================================================================
 // COMPUTE ERRORS KERNEL (All diagnostics on GPU)
 // =========================================================================
-__global__ void computeErrorsKernel(double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_f,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_entropy_diff,double *d_max_mass,double *d_max_momX,double *d_max_momY,double *d_max_energy,double *d_min_entropy,double *d_max_entropy){
+__global__ void computeErrorsKernel(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
 
@@ -102,7 +103,7 @@ __global__ void computeErrorsKernel(double *d_rho,double *d_jx,double *d_jy,doub
 
     // Calculate feq moments
     double rho_feq=0.0,jx_feq=0.0,jy_feq=0.0,rhoE_feq=0.0;
-    double entropy_f=0.0,entropy_feq=0.0;
+    double hf=0.0,hfeq=0.0;
 
     for(int kaux=0;kaux<Q;kaux++){
       double f   = *(d_f+id+kaux*Lx*Ly);
@@ -114,8 +115,8 @@ __global__ void computeErrorsKernel(double *d_rho,double *d_jx,double *d_jy,doub
       rhoE_feq += 0.5*(d_Cx[kaux]*d_Cx[kaux]+d_Cy[kaux]*d_Cy[kaux])*feq;
 
       if(f > 1e-15 && feq > 1e-15){
-	entropy_f   += f*log(f/feq);
-	entropy_feq += feq*log(f/feq);
+	hf   += f*log(f/feq);
+	hfeq += feq*log(f/feq);
       }
     }
 
@@ -125,10 +126,9 @@ __global__ void computeErrorsKernel(double *d_rho,double *d_jx,double *d_jy,doub
     *(d_momX_err+id) = fabs(*(d_jx+id)-jx_feq);
     *(d_momY_err+id) = fabs(*(d_jy+id)-jy_feq);
     *(d_energy_err+id) = fabs(*(d_rho_e+id)-energy_feq);
-    *(d_entropy_diff+id) = entropy_f-entropy_feq;
+    *(d_hfhfeq_diff+id) = hf-hfeq;
 
     // Atomic max/min for diagnostics (use atomicMax/min for doubles)
     // Note: For simplicity, we'll use a reduction approach in the manager
   }
 }
-*/
