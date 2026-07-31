@@ -2,6 +2,9 @@
 #ifndef LBM_H
 #define LBM_H
 
+#include "Constants.h"
+#include "error.h"
+
 class LATTICEBOLTZMANN{
 private:
   // Host data

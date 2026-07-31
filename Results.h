@@ -3,7 +3,7 @@
 #define RESULTS_H
 
 #include "LBM.h"
-#include <cstdio>
+#include <unistd.h>
 
 //class LATTICEBOLTZMANN;
 

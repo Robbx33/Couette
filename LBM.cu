@@ -1,7 +1,5 @@
 // LBM.cu
 #include "LBM.h"
-#include "Constants.h"
-#include "error.h"
 #include <iostream>
 #include <unistd.h>
 using namespace std;
@@ -142,7 +140,7 @@ LATTICEBOLTZMANN::~LATTICEBOLTZMANN(){
   CUDA_CHECK(cudaFree(d_rho_e));
   CUDA_CHECK(cudaFree(d_h));
   CUDA_CHECK(cudaFree(d_feq));
-  CUDA_CHECK(cudaDeviceReset());
+  //CUDA_CHECK(cudaDeviceReset());
   cout<<"Memory freed (CPU+GPU) and Device Reset."<<endl;
 }
 

@@ -4,9 +4,7 @@
 
 #include "LBM.h"
 #include "KernelsManager.h"
-#include <cstdio>
-
-//class LATTICEBOLTZMANN;
+#include <unistd.h>
 
 class PHYSICSCHECKER{
 private:

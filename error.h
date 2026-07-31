@@ -3,8 +3,6 @@
 #define ERROR_H
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <cuda_runtime.h>
 
 // CUDA error checking macro
 #define CUDA_CHECK(call) \

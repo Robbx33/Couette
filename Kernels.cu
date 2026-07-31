@@ -1,8 +1,5 @@
 // Kernels.cu
 #include "Kernels.cuh"
-#include "Constants.h"
-#include <math.h>
-#include <stdio.h>
 
 // =========================================================================
 // COLLISION KERNEL
@@ -130,5 +127,38 @@ __global__ void computeErrorsKernel(double *d_f,int *d_Cx,int *d_Cy,double *d_rh
 
     // Atomic max/min for diagnostics (use atomicMax/min for doubles)
     // Note: For simplicity, we'll use a reduction approach in the manager
+  }
+}
+
+// =========================================================================
+// RENDER KERNEL (All diagnostics on GPU)
+// =========================================================================
+__global__ void renderKernel(uchar4 *d_texture,double *d_rho){
+  int i = threadIdx.x + blockIdx.x*blockDim.x;
+  int j = threadIdx.y + blockIdx.y*blockDim.y;
+
+  if(i<Lx && j<Ly){
+    int id = i + j*Lx;
+    double rho = *(d_rho+id);
+
+    // Normalize: 0.98 to 1.01 -> 0 to 1
+    double normalized = (rho-0.98)/0.03;//takes rho in range between 0 and 1.
+    if(normalized < 0.0){
+      normalized = 0.0;//puts it in a safety range
+    }
+    if(normalized > 1.0){
+      normalized = 1.0;//puts it in a safety range
+    }
+
+    // Red = high density, Green = low density
+    unsigned char red = (unsigned char)(normalized*255.0);
+    unsigned char green = (unsigned char)((1.0-normalized)*255.0);
+
+    uchar4 color;
+    color.x = red;
+    color.y = green;
+    color.z = 0;
+    color.w = 255;
+    *(d_texture+id) = color;
   }
 }

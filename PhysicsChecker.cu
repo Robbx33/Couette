@@ -1,10 +1,5 @@
 // PhysicsChecker.cu
 #include "PhysicsChecker.h"
-#include "LBM.h"
-#include "Constants.h"
-#include "error.h"
-#include <unistd.h>
-#include <iostream>
 using namespace std;
 
 PHYSICSCHECKER::PHYSICSCHECKER(LATTICEBOLTZMANN *Noah,KernelsManager *kernels){

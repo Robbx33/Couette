@@ -1,9 +1,5 @@
 // Results.cu
 #include "Results.h"
-#include "LBM.h"
-#include "Constants.h"
-#include <unistd.h>
-#include <cmath>
 
 RESULTS::RESULTS(LATTICEBOLTZMANN *Noah){
   lbm = Noah;
