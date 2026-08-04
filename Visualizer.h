@@ -6,6 +6,7 @@
 #include "KernelsManager.h"
 #include "GL/glew.h" // (OpenGL-GLUT) extensions packet
 #include <GL/glut.h> // (OpenGL-GLUT) functions (texture) 
+#include <cuda_gl_interop.h>
 
 class Visualizer{
  private:
@@ -17,7 +18,7 @@ class Visualizer{
   
   //uchar4 is a vector type that holds uncharacter data (4 bytes each - RGBA)
   uchar4 *d_buffer;//GPU memory used to hold RGBA colors 
-  uchar4 *h_buffer;//CPU memory used to hold RGBA colors
+  cudaGraphicsResource_t cuda_resource;//New: Interop handle
  public:
   Visualizer(LATTICEBOLTZMANN *Noah,KernelsManager *kernels,int arc,char **argv);
   ~Visualizer();
