@@ -12,19 +12,30 @@ class Visualizer{
  private:
   LATTICEBOLTZMANN *lbm;
   KernelsManager *km;
+
+  // GLuint is a type of variable in the CPU 
+  GLuint texture_id;
+  GLuint vbo_positions;
+  GLuint vbo_uv;
+
+  // CUDA-OpenGL interop resources
+  cudaGraphicsResource_t cuda_texture_resource;
+  cudaGraphicsResource_t cuda_vbo_positions_resource;
+  cudaGraphicsResource_t cuda_vbo_uv_resource;
   
-  //GLuint is a type of variable in the CPU 
-  GLuint texture_id;//(GLuint-CPU) variable
+  // CUDA color buffer 
+  uchar4 *d_color;
   
-  //uchar4 is a vector type that holds uncharacter data (4 bytes each - RGBA)
-  uchar4 *d_buffer;//GPU memory used to hold RGBA colors 
-  cudaGraphicsResource_t cuda_resource;//New: Interop handle
+  // Camera rotation angles for 3D view
+  double angle_x = -90.0;
+  double angle_y = -45.0;
+
  public:
   Visualizer(LATTICEBOLTZMANN *Noah,KernelsManager *kernels,int arc,char **argv);
   ~Visualizer();
   void display(int t);
   
-  uchar4 *get_d_buffer(){return d_buffer;}
+  uchar4 *get_d_color(){return d_color;}
 };
 
 #endif

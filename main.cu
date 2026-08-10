@@ -13,10 +13,10 @@ int main(int argc,char **argv){
   // Create LBM simulation
   LATTICEBOLTZMANN Noah;
   KernelsManager kernels;
-  Visualizer viz((LATTICEBOLTZMANN*)&Noah,(KernelsManager*)&kernels,(int)argc,(char**)argv);
   PHYSICSCHECKER physics((LATTICEBOLTZMANN*)&Noah,(KernelsManager*)&kernels);
   RESULTS Results((LATTICEBOLTZMANN*)&Noah);
-  
+  //Visualizer viz((LATTICEBOLTZMANN*)&Noah,(KernelsManager*)&kernels,(int)argc,(char**)argv);
+
   cout<<"=== LBM Simulation Started ==="<<endl;
   cout<<"Grid: "<<Lx<<"x"<<Ly<<", Q="<<Q<<endl;
   cout<<"nu="<<nu<<", Tau="<<Tau<<endl;
@@ -28,15 +28,14 @@ int main(int argc,char **argv){
     kernels.launchStream(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy());
     
     // Visualize every 5 steps
-    if(t%5==0){
+    /*if(t%5==0){
       kernels.launchComputeMacros(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_rho(),Noah.get_d_jx(),Noah.get_d_jy(),Noah.get_d_rho_e(),Noah.get_d_h());
-      kernels.launchRender(viz.get_d_buffer(),Noah.get_d_rho());
       viz.display((int)t);
-    }
-  
+      }*/
+    
     // Diagnostics every 30 steps
     if(t%30==0 || t==1999){
-      //kernels.launchComputeMacros(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_rho(),Noah.get_d_jx(),Noah.get_d_jy(),Noah.get_d_rho_e(),Noah.get_d_h());
+      kernels.launchComputeMacros(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_rho(),Noah.get_d_jx(),Noah.get_d_jy(),Noah.get_d_rho_e(),Noah.get_d_h());
       kernels.launchComputeFeq(Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_w(),Noah.get_d_rho(),Noah.get_d_jx(),Noah.get_d_jy(),Noah.get_d_feq());
       
       /*Noah.copyBack();

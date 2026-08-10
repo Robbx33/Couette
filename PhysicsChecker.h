@@ -19,10 +19,15 @@ private:
   FILE *gp_pipe_momY_error;
   FILE *gp_pipe_energy_error;
   FILE *gp_pipe_hfhfeq_diff;
+
+  void computerErrorStats(double *array,int size,double &max_val,double &min_val);
   
 public:
   PHYSICSCHECKER(LATTICEBOLTZMANN *Noah,KernelsManager *kernels);
   ~PHYSICSCHECKER();
+  void configureGnuplotPipe(FILE *gp_pipe,const char *title);
+  void computeErrorStats(double *array,double &max_val,double &min_val);
+  void writeErrorData(const char *filename,double *data);
   void plotCollisionConservation_RestrictionErrorsCPU(int t);
   void plotCollisionConservation_RestrictionErrorsGPU(int t);
   /*void printSummary();

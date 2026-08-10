@@ -131,34 +131,41 @@ __global__ void computeErrorsKernel(double *d_f,int *d_Cx,int *d_Cy,double *d_rh
 }
 
 // =========================================================================
-// RENDER KERNEL (All diagnostics on GPU)
+// FILL VBO KERNEL (For 3D surface)
 // =========================================================================
-__global__ void renderKernel(uchar4 *d_texture,double *d_rho){
+__global__ void renderAndfillKernel(uchar4 *d_color,double *d_positions,double *d_uv,double *d_rho){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
-
+  
   if(i<Lx && j<Ly){
     int id = i + j*Lx;
-    double rho = *(d_rho+id);
-
-    // Normalize: 0.98 to 1.01 -> 0 to 1
-    double normalized = (rho-0.98)/0.03;//takes rho in range between 0 and 1.
+    
+    // ==== 1. COLOR ====
+    double normalized = (*(d_rho+id)-0.98)/0.10;
     if(normalized < 0.0){
-      normalized = 0.0;//puts it in a safety range
+      normalized = 0.0;
     }
-    if(normalized > 1.0){
-      normalized = 1.0;//puts it in a safety range
+    if(normalized >1.0){
+      normalized = 1.0;
     }
-
-    // Red = high density, Green = low density
-    unsigned char red = (unsigned char)(normalized*255.0);
-    unsigned char green = (unsigned char)((1.0-normalized)*255.0);
-
     uchar4 color;
-    color.x = red;
-    color.y = green;
+    color.x = (unsigned char)(normalized*255.0);
+    color.y = (unsigned char)((1.0-normalized)*255.0);
     color.z = 0;
     color.w = 255;
-    *(d_texture+id) = color;
-  }
+    *(d_color+id) = color;
+    
+    // ==== 2. VERTEX POSITIONS ====
+    double scale = 0.02;
+    double height_scale = 100.0;
+
+    *(d_positions+id*3+0) = (i-Lx/2.0)*scale;
+    *(d_positions+id*3+1) = (j-Ly/2.0)*scale;
+    *(d_positions+id*3+2) = (*(d_rho+id)-0.98)*height_scale;
+
+    // === 3. TEXTURE COORDINATES ====
+    *(d_uv+id*2+0) = (double)i/(Lx-1);
+    *(d_uv+id*2+1) = (double)j/(Ly-1);
+  } 
 }
+
