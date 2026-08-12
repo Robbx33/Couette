@@ -20,34 +20,31 @@ private:
 
   friend class PHYSICSCHECKER;
   friend class RESULTS;
-      /*friend class KernelsManager;*/
-  
 public:
-  LATTICEBOLTZMANN();
-  ~LATTICEBOLTZMANN();
+  LATTICEBOLTZMANN(void);
+  ~LATTICEBOLTZMANN(void);
   void copyBack();
   void calcularMacros();
   void calcularFeq();
   
   // Getters for friends
-  double *get_d_f(){ return d_f;}
-  int *get_d_Cx(){ return d_Cx;}
-  int *get_d_Cy(){ return d_Cy;}
-  double *get_d_w(){ return d_w;}
-  double *get_d_rho(){ return d_rho;}
-  double *get_d_jx(){ return d_jx;}
-  double *get_d_jy(){ return d_jy;}
-  double *get_d_rho_e(){ return d_rho_e;}
-  double *get_d_h(){ return d_h;}
-  double *get_d_feq(){ return d_feq;}
+  double *get_d_f(){return d_f;}
+  int *get_d_Cx(){return d_Cx;}
+  int *get_d_Cy(){return d_Cy;}
+  double *get_d_w(){return d_w;}
+  double *get_d_rho(){return d_rho;}
+  double *get_d_jx(){return d_jx;}
+  double *get_d_jy(){return d_jy;}
+  double *get_d_rho_e(){return d_rho_e;}
+  double *get_d_h(){return d_h;}
+  double *get_d_feq(){return d_feq;}
   
-  
-  double *get_rho(){ return h_rho;}
-  double *get_jx(){ return h_jx;}
-  double *get_jy(){ return h_jy;}
-  double *get_rho_e(){ return h_rho_e;}
-  double *get_h_f(){ return h_f;};
-  double *get_h_rho(){ return h_rho;}
+  double *get_rho(){return h_rho;}
+  double *get_jx(){return h_jx;}
+  double *get_jy(){return h_jy;}
+  double *get_rho_e(){return h_rho_e;}
+  double *get_h_f(){return h_f;};
+  double *get_h_rho(){return h_rho;}
 };
 
 #endif

@@ -8,7 +8,7 @@ using namespace std;
 // CONSTRUCTOR
 // ===========================================================
 
-LATTICEBOLTZMANN::LATTICEBOLTZMANN(){
+LATTICEBOLTZMANN::LATTICEBOLTZMANN(void){
   // Kill gnuplot ONCE at the very beginning
   system("pkill gnuplot 2>/dev/null");
   usleep(300000);
@@ -82,34 +82,6 @@ LATTICEBOLTZMANN::LATTICEBOLTZMANN(){
   CUDA_CHECK(cudaMemcpy((void*)(d_Cy+0),(const void*)(h_Cy+0),(size_t)Q*sizeof(int),cudaMemcpyHostToDevice));
   CUDA_CHECK(cudaMemcpy((void*)(d_w+0),(const void*)(h_w+0),(size_t)Q*sizeof(double),cudaMemcpyHostToDevice));
 
-  // Initialize gnuplot
-  /*system("pkill gnuplot 2>/dev/null");
-    usleep(300000);
-    gp_pipe = popen("gnuplot -persist","w");
-    gp_pipe_error = popen("gnuplot -persist","w");
-    
-    fprintf(gp_pipe,"set xlabel 'ix'\n");
-    fprintf(gp_pipe,"set ylabel 'iy'\n");
-    fprintf(gp_pipe,"set zlabel 'Density'\n");
-    fprintf(gp_pipe,"set grid\n");
-    fprintf(gp_pipe,"set xrange [0:%d]\n", Lx);
-    fprintf(gp_pipe,"set yrange [0:%d]\n", Ly);
-    fprintf(gp_pipe,"set zrange [0.98:1.015]\n");
-    fprintf(gp_pipe,"set cbrange [0.98:1.015]\n");
-    fprintf(gp_pipe,"set palette defined (0 '#0000FF', 0.33 '#00FFFF', 0.66 '#FFFF00', 1 '#FF0000')\n");
-    fflush(gp_pipe);
-    
-    // Error window settings
-    fprintf(gp_pipe_error,"set xlabel 'ix'\n");
-    fprintf(gp_pipe_error,"set ylabel 'iy'\n");
-    fprintf(gp_pipe_error,"set zlabel 'Error'\n");
-    fprintf(gp_pipe_error,"set grid\n");
-    fprintf(gp_pipe_error,"set xrange [0:%d]\n", Lx);
-    fprintf(gp_pipe_error,"set yrange [0:%d]\n", Ly);
-    fprintf(gp_pipe_error,"set view map\n");
-    fprintf(gp_pipe_error,"set palette defined (0 '#0000FF', 0.5 '#00FF00', 1 '#FF0000')\n");
-    fflush(gp_pipe_error);
-  */
   cout<<"Memory allocated (CPU+GPU)."<<endl;
 }
 
@@ -117,7 +89,7 @@ LATTICEBOLTZMANN::LATTICEBOLTZMANN(){
 // DESTRUCTOR
 // ===========================================================
 
-LATTICEBOLTZMANN::~LATTICEBOLTZMANN(){
+LATTICEBOLTZMANN::~LATTICEBOLTZMANN(void){
   free(h_f);
   free(h_Cx);
   free(h_Cy);
@@ -128,8 +100,6 @@ LATTICEBOLTZMANN::~LATTICEBOLTZMANN(){
   free(h_rho_e);
   free(h_h);
   free(h_feq);
-  /*pclose(gp_pipe);
-    pclose(gp_pipe_error);*/
   CUDA_CHECK(cudaFree(d_f));
   CUDA_CHECK(cudaFree(d_Cx));
   CUDA_CHECK(cudaFree(d_Cy));

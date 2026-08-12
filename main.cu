@@ -6,16 +6,13 @@
 #include <iostream>
 using namespace std;
 
-//OpenGL is an Application Programming Interface that can handle things in the CPU and the GPU
-//argc, argv are empty arguments that (OpenGL-GLUT) is expecting
-//GLUT is the toolkit of OpenGL
 int main(int argc,char **argv){
   // Create LBM simulation
   LATTICEBOLTZMANN Noah;
-  KernelsManager kernels;
+  Visualizer viz((LATTICEBOLTZMANN*)&Noah,(int)argc,(char**)argv);
+  KernelsManager kernels((Visualizer*)&viz);
   PHYSICSCHECKER physics((LATTICEBOLTZMANN*)&Noah,(KernelsManager*)&kernels);
-  RESULTS Results((LATTICEBOLTZMANN*)&Noah);
-  //Visualizer viz((LATTICEBOLTZMANN*)&Noah,(KernelsManager*)&kernels,(int)argc,(char**)argv);
+  //RESULTS Results((LATTICEBOLTZMANN*)&Noah);
 
   cout<<"=== LBM Simulation Started ==="<<endl;
   cout<<"Grid: "<<Lx<<"x"<<Ly<<", Q="<<Q<<endl;
@@ -24,19 +21,19 @@ int main(int argc,char **argv){
   
   for(int t=0;t<2000;t++){
     // Compute
-    kernels.launchCollision(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_w());
-    kernels.launchStream(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy());
+    kernels.launchCollision((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_w());
+    kernels.launchStream((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy());
     
     // Visualize every 5 steps
-    /*if(t%5==0){
-      kernels.launchComputeMacros(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_rho(),Noah.get_d_jx(),Noah.get_d_jy(),Noah.get_d_rho_e(),Noah.get_d_h());
-      viz.display((int)t);
-      }*/
+    if(t%5==0){
+      kernels.launchComputeMacros((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_rho(),(double*)Noah.get_d_jx(),(double*)Noah.get_d_jy(),(double*)Noah.get_d_rho_e(),(double*)Noah.get_d_h());
+      kernels.launchRenderAndFill((uchar4*)viz.get_d_color(),(double*)viz.get_d_positions(),(double*)viz.get_d_uv(),(double*)Noah.get_d_rho(),(int)t);
+      }
     
     // Diagnostics every 30 steps
     if(t%30==0 || t==1999){
-      kernels.launchComputeMacros(Noah.get_d_f(),Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_rho(),Noah.get_d_jx(),Noah.get_d_jy(),Noah.get_d_rho_e(),Noah.get_d_h());
-      kernels.launchComputeFeq(Noah.get_d_Cx(),Noah.get_d_Cy(),Noah.get_d_w(),Noah.get_d_rho(),Noah.get_d_jx(),Noah.get_d_jy(),Noah.get_d_feq());
+      kernels.launchComputeMacros((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_rho(),(double*)Noah.get_d_jx(),(double*)Noah.get_d_jy(),(double*)Noah.get_d_rho_e(),(double*)Noah.get_d_h());
+      kernels.launchComputeFeq((int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_w(),(double*)Noah.get_d_rho(),(double*)Noah.get_d_jx(),(double*)Noah.get_d_jy(),(double*)Noah.get_d_feq());
       
       /*Noah.copyBack();
       Noah.calcularMacros();

@@ -1,7 +1,8 @@
 // KernelsManager.cu
 #include "KernelsManager.h"
 
-KernelsManager::KernelsManager(){
+KernelsManager::KernelsManager(Visualizer *viz){
+  v = viz;
   // 2D kernel launch configs
   blockSize2D = dim3(4,2,1);
   gridSize2D  = dim3((Lx+blockSize2D.x-1)/blockSize2D.x,(Ly+blockSize2D.y-1)/blockSize2D.y,1);
@@ -10,7 +11,7 @@ KernelsManager::KernelsManager(){
   gridSize3D  = dim3((Lx+blockSize3D.x-1)/blockSize3D.x,(Ly+blockSize3D.y-1)/blockSize3D.y,(Q+blockSize3D.z-1)/blockSize3D.z);
 }
 
-KernelsManager::~KernelsManager(){}
+KernelsManager::~KernelsManager(void){}
 
 void KernelsManager::launchCollision(double *d_f,int *d_Cx,int *d_Cy,double *d_w){
   collisionKernel<<<gridSize3D,blockSize3D>>>((double*) d_f,(int*) d_Cx,(int*) d_Cy,(double*) d_w);
@@ -42,8 +43,12 @@ void KernelsManager::launchComputeErrors(double *d_f,int *d_Cx,int *d_Cy,double 
   SYNC_CHECK();
 }
 
-void KernelsManager::launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_rho){
+void KernelsManager::launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_rho,int t){
+  v->copyColorToTexture((uchar4*)d_color);
+  v->mapVBOs((double**)&d_positions,(double**)&d_uv);
   renderAndfillKernel<<<gridSize2D,blockSize2D>>>((uchar4*)d_color,(double*)d_positions,(double*)d_uv,(double*)d_rho);
   KERNEL_CHECK();
   SYNC_CHECK();
+  v->unmapVBOs();
+  v->display((int)t);
 }

@@ -3,10 +3,7 @@
 
 RESULTS::RESULTS(LATTICEBOLTZMANN *Noah){
   lbm = Noah;
-
-  /*system("pkill gnuplot 2>/dev/null");
-    usleep(300000);*/
-  
+ 
   // Gnuplot pipes
   gp_pipe_density  = popen("gnuplot -persist","w");
   gp_pipe_ux       = popen("gnuplot -persist","w");

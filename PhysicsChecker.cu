@@ -35,7 +35,7 @@ PHYSICSCHECKER::PHYSICSCHECKER(LATTICEBOLTZMANN *Noah,KernelsManager *kernels){
   configureGnuplotPipe(gp_pipe_hfhfeq_diff,"sum[f*log(f/feq)]-sum[feq*Log(f/feq)] Error Collision");
 }
 
-PHYSICSCHECKER::~PHYSICSCHECKER(){
+PHYSICSCHECKER::~PHYSICSCHECKER(void){
   // Free host error arrays
   free(h_mass_err);
   free(h_momX_err);

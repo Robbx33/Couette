@@ -1,15 +1,16 @@
 // Visualizer.cu
 #include "Visualizer.h"
 
-Visualizer::Visualizer(LATTICEBOLTZMANN *Noah,KernelsManager *kernels,int argc,char **argv){
+Visualizer::Visualizer(LATTICEBOLTZMANN *Noah,int argc,char **argv){
   lbm = Noah;
-  km = kernels;
   
   // Allocate (GPU-Cuda) buffer for render kernel
   CUDA_CHECK(cudaMalloc((void**)&d_color,Lx*Ly*sizeof(uchar4)));
+  CUDA_CHECK(cudaMalloc((void**)&d_positions,Lx*Ly*3*sizeof(double)));
+  CUDA_CHECK(cudaMalloc((void**)&d_uv,Lx*Ly*2*sizeof(double)));
   
   // Initialize GLUT
-  glutInit(&argc,argv);
+  glutInit((int*)&argc,(char**)argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(800,800);
   glutCreateWindow("LBM 3D Surface");
@@ -18,8 +19,7 @@ Visualizer::Visualizer(LATTICEBOLTZMANN *Noah,KernelsManager *kernels,int argc,c
   // 3D PROJECTION
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluPerspective(45.0,1.0,0.1,100.0);  // Instead of glOrtho
-  //glOrtho(-2.0,-2.0,-2.0,2.0,-10.0,10.0);
+  gluPerspective(45.0,1.0,0.1,100.0);  
 
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
@@ -45,8 +45,8 @@ Visualizer::Visualizer(LATTICEBOLTZMANN *Noah,KernelsManager *kernels,int argc,c
   glShadeModel(GL_SMOOTH);
 
   // ==== CREATE TEXTURE ====
-  glGenTextures(1,&texture_id);
-  glBindTexture(GL_TEXTURE_2D,texture_id);
+  glGenTextures(1,(GLuint*)&texture_id);
+  glBindTexture(GL_TEXTURE_2D,(GLuint)texture_id);
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -74,7 +74,7 @@ Visualizer::Visualizer(LATTICEBOLTZMANN *Noah,KernelsManager *kernels,int argc,c
   printf("Visualizer initialized: 3D surface with interop\n");
 }
 
-Visualizer::~Visualizer(){
+Visualizer::~Visualizer(void){
   if(texture_id){
     glDeleteTextures(1,&texture_id);
   }
@@ -87,77 +87,77 @@ Visualizer::~Visualizer(){
   if(d_color){
     cudaFree(d_color);
   }
+  if(d_positions){
+    cudaFree(d_positions);
+  }
+  if(d_uv){
+    cudaFree(d_uv);
+  }
   if(cuda_texture_resource){
-    cudaGraphicsUnregisterResource(cuda_texture_resource);
+    cudaGraphicsUnregisterResource((cudaGraphicsResource_t)cuda_texture_resource);
   }
   if(cuda_vbo_positions_resource){
-    cudaGraphicsUnregisterResource(cuda_vbo_positions_resource);
+    cudaGraphicsUnregisterResource((cudaGraphicsResource_t)cuda_vbo_positions_resource);
   }
   if(cuda_vbo_uv_resource){
-    cudaGraphicsUnregisterResource(cuda_vbo_uv_resource);
+    cudaGraphicsUnregisterResource((cudaGraphicsResource_t)cuda_vbo_uv_resource);
   }
 }
 
-void Visualizer::display(int t){
-  // ==== MAP RESOURCES FOR CUDA ====
+void Visualizer::copyColorToTexture(uchar4 *d_color){
   // Map texture for CUDA access
-  cudaGraphicsMapResources(1,&cuda_texture_resource,0);
+  cudaGraphicsMapResources(1,(cudaGraphicsResource_t*)&cuda_texture_resource,0);
   cudaArray *array;
-  cudaGraphicsSubResourceGetMappedArray(&array,cuda_texture_resource,0,0);
-
-  // Map positions VBO
-  cudaGraphicsMapResources(1,&cuda_vbo_positions_resource,0);
-  double *d_positions;
-  cudaGraphicsResourceGetMappedPointer((void**)&d_positions,0,cuda_vbo_positions_resource);
-
-  // Map UV VBO
-  cudaGraphicsMapResources(1,&cuda_vbo_uv_resource,0);
-  double *d_uv;
-  cudaGraphicsResourceGetMappedPointer((void**)&d_uv,0,cuda_vbo_uv_resource);
-  
-  // ==== LAUNCH RENDER & FILL KERNEL ====
-  // Does: colors + vertex positions + texture coordinates in one pass
-  km->launchRenderAndFill(d_color,d_positions,d_uv,lbm->get_d_rho());
-
+  cudaGraphicsSubResourceGetMappedArray((cudaArray**)&array,(cudaGraphicsResource_t)cuda_texture_resource,0,0);
   // ==== COPY COLORS TO TEXTURE ====
-  cudaMemcpy2DToArray(array,0,0,d_color,Lx*sizeof(uchar4),Lx*sizeof(uchar4),Ly,cudaMemcpyDeviceToDevice);
-
+  cudaMemcpy2DToArray((cudaArray*)array,0,0,(uchar4*)d_color,Lx*sizeof(uchar4),Lx*sizeof(uchar4),Ly,cudaMemcpyDeviceToDevice);
   // ==== UNMAP RESOURCES ====
-  cudaGraphicsUnmapResources(1,&cuda_texture_resource,0);
-  cudaGraphicsUnmapResources(1,&cuda_vbo_positions_resource,0);
-  cudaGraphicsUnmapResources(1,&cuda_vbo_uv_resource,0);
+  cudaGraphicsUnmapResources(1,(cudaGraphicsResource_t*)&cuda_texture_resource,0);
+}
 
+void Visualizer::mapVBOs(double **d_positions,double **d_uv){
+  // Map positions & UV VBOs
+  cudaGraphicsMapResources(1,(cudaGraphicsResource_t*)&cuda_vbo_positions_resource,0);
+  cudaGraphicsResourceGetMappedPointer((void**)d_positions,0,(cudaGraphicsResource_t)cuda_vbo_positions_resource);
+  cudaGraphicsMapResources(1,(cudaGraphicsResource_t*)&cuda_vbo_uv_resource,0);
+  cudaGraphicsResourceGetMappedPointer((void**)d_uv,0,(cudaGraphicsResource_t)cuda_vbo_uv_resource);  
+}
+
+void Visualizer::unmapVBOs(){
+  cudaGraphicsUnmapResources(1,(cudaGraphicsResource_t*)&cuda_vbo_positions_resource,0);
+  cudaGraphicsUnmapResources(1,(cudaGraphicsResource_t*)&cuda_vbo_uv_resource,0);
+}
+
+void Visualizer::display(int t){
   // ==== RENDER ====
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
   glLoadIdentity();
   glTranslated(0.0,-3.5,-6.0);
-  glRotated(angle_y,0.0,1.0,0.0);
-  glRotated(angle_x,1.0,0.0,0.0);
+  glRotated((double)angle_y,0.0,1.0,0.0);
+  glRotated((double)angle_x,1.0,0.0,0.0);
   
   // Disable lighting to see colors directly
   glEnable(GL_LIGHTING);
   
   //Enable texture
   glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D,texture_id);
+  glBindTexture(GL_TEXTURE_2D,(GLuint)texture_id);
   
   //Position VBO
-  glBindBuffer(GL_ARRAY_BUFFER,vbo_positions);
+  glBindBuffer(GL_ARRAY_BUFFER,(GLuint)vbo_positions);
   glEnableClientState(GL_VERTEX_ARRAY);
   glVertexPointer(3,GL_DOUBLE,0,0);
 
   //UV VBO
-  glBindBuffer(GL_ARRAY_BUFFER,vbo_uv);
+  glBindBuffer(GL_ARRAY_BUFFER,(GLuint)vbo_uv);
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
   glTexCoordPointer(2,GL_DOUBLE,0,0);
   
   // Draw surface
-  for(int iy=0;iy<Ly-1;iy++){   // step=2 for speed
+  for(int iy=0;iy<Ly-1;iy++){   
     glDrawArrays(GL_LINE_STRIP,iy*Lx,Lx);
   }
-  // Draw as triangles using GL_TRIANGLES
-  //glDrawArrays(GL_LINE, 0, Lx * Ly);
   
   // Cleanup
   glDisableClientState(GL_VERTEX_ARRAY);

@@ -24,7 +24,7 @@ private:
   
 public:
   PHYSICSCHECKER(LATTICEBOLTZMANN *Noah,KernelsManager *kernels);
-  ~PHYSICSCHECKER();
+  ~PHYSICSCHECKER(void);
   void configureGnuplotPipe(FILE *gp_pipe,const char *title);
   void computeErrorStats(double *array,double &max_val,double &min_val);
   void writeErrorData(const char *filename,double *data);

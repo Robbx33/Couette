@@ -5,14 +5,17 @@
 #include "Constants.h"
 #include "Kernels.cuh"
 #include "error.h"
+#include "Visualizer.h"
 
 class KernelsManager{
  private:
+  Visualizer *v;
+  
   dim3 blockSize2D,gridSize2D;
   dim3 blockSize3D,gridSize3D;
  public:
-  KernelsManager();
-  ~KernelsManager();
+  KernelsManager(Visualizer *viz);
+  ~KernelsManager(void);
 
   // Launch kernels
   void launchCollision(double *d_f,int *d_Cx,int *d_Cy,double *d_w);
@@ -20,7 +23,7 @@ class KernelsManager{
   void launchComputeMacros(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h);
   void launchComputeFeq(int *d_Cx,int *d_Cy,double *d_w,double *d_rho,double *d_jx,double *d_jy,double *d_feq);
   void launchComputeErrors(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double* d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff);
-  void launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_rho);
+  void launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_rho,int t);
   
   //Reduction helpers
   /*void reduceMax(double *d_input,double *d_output,int size);
