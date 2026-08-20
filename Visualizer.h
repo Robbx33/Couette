@@ -2,15 +2,14 @@
 #ifndef VISUALIZER_H
 #define VISUALIZER_H
 
-#include "LBM.h"
+#include "Constants.h"
+#include "error.h"
 #include "GL/glew.h" // (OpenGL-GLUT) extensions packet
 #include <GL/glut.h> // (OpenGL-GLUT) functions (texture) 
 #include <cuda_gl_interop.h>
 
 class Visualizer{
  private:
-  LATTICEBOLTZMANN *lbm;
-
   // GLuint is a type of variable in the CPU 
   GLuint texture_id;
   GLuint vbo_positions;
@@ -27,20 +26,19 @@ class Visualizer{
   double *d_uv;
   
   // Camera rotation angles for 3D view
-  double angle_x = -90.0;
-  double angle_y = -45.0;
-
+  double angle_x = 0.0;
+  double angle_y = 22.0;
  public:
-  Visualizer(LATTICEBOLTZMANN *Noah,int arc,char **argv);
+  Visualizer(int arc,char **argv);
   ~Visualizer(void);
   void copyColorToTexture(uchar4 *d_color);
   void mapVBOs(double **d_positions,double **d_uv);
-  void unmapVBOs();
-  void display(int t);
+  void unmapVBOs(void);
+  void display(int t,double min_val,double max_val);
   
-  uchar4 *get_d_color(){return d_color;}
-  double *get_d_positions(){return d_positions;}
-  double *get_d_uv(){return d_uv;}
+  uchar4 *get_d_color(void){return d_color;}
+  double *get_d_positions(void){return d_positions;}
+  double *get_d_uv(void){return d_uv;}
 };
 
 #endif

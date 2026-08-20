@@ -1,18 +1,19 @@
 // main.cu
 #include "LBM.h"
+#include "Visualizer.h"
+#include "KernelsManager.h"
 #include "PhysicsChecker.h"
 #include "Results.h"
-#include "Visualizer.h"
+
 #include <iostream>
 using namespace std;
 
 int main(int argc,char **argv){
-  // Create LBM simulation
-  LATTICEBOLTZMANN Noah;
-  Visualizer viz((LATTICEBOLTZMANN*)&Noah,(int)argc,(char**)argv);
-  KernelsManager kernels((Visualizer*)&viz);
-  PHYSICSCHECKER physics((LATTICEBOLTZMANN*)&Noah,(KernelsManager*)&kernels);
-  //RESULTS Results((LATTICEBOLTZMANN*)&Noah);
+  LATTICEBOLTZMANN Gauss;
+  Visualizer Roberto((int)argc,(char**)argv);
+  KernelsManager Gargantua((Visualizer*)&Roberto);
+  PHYSICSCHECKER Noah;
+  RESULTS Jeremias((LATTICEBOLTZMANN*)&Gauss);
 
   cout<<"=== LBM Simulation Started ==="<<endl;
   cout<<"Grid: "<<Lx<<"x"<<Ly<<", Q="<<Q<<endl;
@@ -21,40 +22,17 @@ int main(int argc,char **argv){
   
   for(int t=0;t<2000;t++){
     // Compute
-    kernels.launchCollision((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_w());
-    kernels.launchStream((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy());
+    Gargantua.launchComputeMacros((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h());
+    Gargantua.launchComputeFeq((double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_feq());
     
-    // Visualize every 5 steps
-    if(t%5==0){
-      kernels.launchComputeMacros((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_rho(),(double*)Noah.get_d_jx(),(double*)Noah.get_d_jy(),(double*)Noah.get_d_rho_e(),(double*)Noah.get_d_h());
-      kernels.launchRenderAndFill((uchar4*)viz.get_d_color(),(double*)viz.get_d_positions(),(double*)viz.get_d_uv(),(double*)Noah.get_d_rho(),(int)t);
-      }
+    if(t%1==0){
+      Gargantua.launchComputeErrors((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h(),(double*)Gauss.get_d_feq(),(double*)Noah.get_d_mass_err(),(double*)Noah.get_d_momX_err(),(double*)Noah.get_d_momY_err(),(double*)Noah.get_d_energy_err(),(double*)Noah.get_d_hfhfeq_diff());
+      Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Noah.get_d_hfhfeq_diff(),(int)t);
+      Jeremias.plotMacros((int)t);
+    }
     
-    // Diagnostics every 30 steps
-    if(t%30==0 || t==1999){
-      kernels.launchComputeMacros((double*)Noah.get_d_f(),(int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_rho(),(double*)Noah.get_d_jx(),(double*)Noah.get_d_jy(),(double*)Noah.get_d_rho_e(),(double*)Noah.get_d_h());
-      kernels.launchComputeFeq((int*)Noah.get_d_Cx(),(int*)Noah.get_d_Cy(),(double*)Noah.get_d_w(),(double*)Noah.get_d_rho(),(double*)Noah.get_d_jx(),(double*)Noah.get_d_jy(),(double*)Noah.get_d_feq());
-      
-      /*Noah.copyBack();
-      Noah.calcularMacros();
-      Noah.calcularFeq();*/
-      
-      // Physics diagnostics      
-      //physics.plotCollisionConservation_RestrictionErrorsCPU((int)t);
-      physics.plotCollisionConservation_RestrictionErrorsGPU((int)t);
-
-      // Flow visualization
-      //Results.plotAll(t);
-
-      //cout<<"t="<<t<<" | ";
-      /*physics.printSummary();*/
-      }
+    Gargantua.launchCollision((double*)Gauss.get_d_f(),(double*)Gauss.get_d_feq());
+    Gargantua.launchStream((double*)Gauss.get_d_f());
   }
-  
-  //Final report
-
-  //cout<<"\n=== Final Report ==="<<endl;
-  //physics.printReport();
-  //cout<<"=== Program Ended ==="<<endl;
   return 0;
 }

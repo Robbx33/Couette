@@ -3,31 +3,33 @@
 #define KERNELSMANAGER_H
 
 #include "Constants.h"
-#include "Kernels.cuh"
 #include "error.h"
+#include "Kernels.cuh"
 #include "Visualizer.h"
 
 class KernelsManager{
  private:
-  Visualizer *v;
+  Visualizer *viz;
   
   dim3 blockSize2D,gridSize2D;
   dim3 blockSize3D,gridSize3D;
+
+  double *h_min_temp;
+  double *h_max_temp;
+  double *d_min_temp;
+  double *d_max_temp;
  public:
-  KernelsManager(Visualizer *viz);
+  KernelsManager(Visualizer *Roberto);
   ~KernelsManager(void);
 
   // Launch kernels
-  void launchCollision(double *d_f,int *d_Cx,int *d_Cy,double *d_w);
-  void launchStream(double *d_f,int *d_Cx,int *d_Cy);
-  void launchComputeMacros(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h);
-  void launchComputeFeq(int *d_Cx,int *d_Cy,double *d_w,double *d_rho,double *d_jx,double *d_jy,double *d_feq);
-  void launchComputeErrors(double *d_f,int *d_Cx,int *d_Cy,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double* d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff);
-  void launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_rho,int t);
-  
-  //Reduction helpers
-  /*void reduceMax(double *d_input,double *d_output,int size);
-  void reduceMin(double *d_input,double *d_output,int size);*/
+  void launchCollision(double *d_f,double *d_feq);
+  void launchStream(double *d_f);
+  void launchComputeMacros(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h);
+  void launchComputeFeq(double *d_rho,double *d_jx,double *d_jy,double *d_feq);
+  void launchComputeErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double* d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff);
+  void findMinMax(double *d_data,double *min_val,double *max_val);
+  void launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_data,int t);
   };
 
 #endif

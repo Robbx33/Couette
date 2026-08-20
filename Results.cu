@@ -1,259 +1,90 @@
 // Results.cu
 #include "Results.h"
 
-RESULTS::RESULTS(LATTICEBOLTZMANN *Noah){
-  lbm = Noah;
- 
-  // Gnuplot pipes
-  gp_pipe_density  = popen("gnuplot -persist","w");
-  gp_pipe_ux       = popen("gnuplot -persist","w");
-  gp_pipe_uy       = popen("gnuplot -persist","w");
-  gp_pipe_energy   = popen("gnuplot -persist","w");
-  gp_pipe_h        = popen("gnuplot -persist","w");
-  // Configure density plot
-  fprintf(gp_pipe_density,"set xlabel 'ix'\n");
-  fprintf(gp_pipe_density,"set ylabel 'iy'\n");
-  fprintf(gp_pipe_density,"set zlabel 'Density'\n");
-  fprintf(gp_pipe_density,"set grid\n");
-  fprintf(gp_pipe_density,"set xrange [0:%d]\n",Lx);
-  fprintf(gp_pipe_density,"set yrange [0:%d]\n",Ly);
-  fprintf(gp_pipe_density,"set hidden3d\n");
-  fprintf(gp_pipe_density,"set palette defined (0 '#0000FF', 0.5 '#00FF00', 1 '#FF0000', 1 '#FF0000')\n");
-  fflush(gp_pipe_density);
+RESULTS::RESULTS(LATTICEBOLTZMANN *Gauss){
+  lbm = Gauss;
   
-  // Configure ux plot
-  fprintf(gp_pipe_ux,"set xlabel 'ix'\n");
-  fprintf(gp_pipe_ux,"set ylabel 'iy'\n");
-  fprintf(gp_pipe_ux,"set zlabel 'ux'\n");
-  fprintf(gp_pipe_ux,"set grid\n");
-  fprintf(gp_pipe_ux,"set xrange [0:%d]\n",Lx);
-  fprintf(gp_pipe_ux,"set yrange [0:%d]\n",Ly);
-  fprintf(gp_pipe_ux,"set hidden3d\n");
-  fprintf(gp_pipe_ux,"set palette defined (0 '#0000FF', 0.5 '#00FF00', 1 '#FF0000')\n");
-  fflush(gp_pipe_ux);
+  gp_pipe_rho = popen("gnuplot -persist","w");
+  gp_pipe_jx = popen("gnuplot -persist","w");
+  gp_pipe_jy = popen("gnuplot -persist","w");
+  gp_pipe_rho_e = popen("gnuplot -persist","w");
+  gp_pipe_h = popen("gnuplot -persist","w");
 
-  // Configure uy plot
-  fprintf(gp_pipe_uy,"set xlabel 'ix'\n");
-  fprintf(gp_pipe_uy,"set ylabel 'iy'\n");
-  fprintf(gp_pipe_uy,"set zlabel 'uy'\n");
-  fprintf(gp_pipe_uy,"set grid\n");
-  fprintf(gp_pipe_uy,"set xrange [0:%d]\n",Lx);
-  fprintf(gp_pipe_uy,"set yrange [0:%d]\n",Ly);
-  fprintf(gp_pipe_uy,"set hidden3d\n");
-  fprintf(gp_pipe_uy,"set palette defined (0 '#0000FF', 0.5 '#00FF00', 1 '#FF0000')\n");
-  fflush(gp_pipe_uy);
-  
-  // Configure energy plot
-  fprintf(gp_pipe_energy,"set xlabel 'ix'\n");
-  fprintf(gp_pipe_energy,"set ylabel 'iy'\n");
-  fprintf(gp_pipe_energy,"set zlabel 'Internal Energy'\n");
-  fprintf(gp_pipe_energy,"set grid\n");
-  fprintf(gp_pipe_energy,"set xrange [0:%d]\n",Lx);
-  fprintf(gp_pipe_energy,"set yrange [0:%d]\n",Ly);
-  fprintf(gp_pipe_energy,"set hidden3d\n");
-  fprintf(gp_pipe_energy,"set palette defined (0 '#0000FF', 0.5 '#00FF00', 1 '#FF0000')\n");
-  fflush(gp_pipe_energy);
-
-    // Configure energy plot
-  fprintf(gp_pipe_h,"set xlabel 'ix'\n");
-  fprintf(gp_pipe_h,"set ylabel 'iy'\n");
-  fprintf(gp_pipe_h,"set zlabel 'h'\n");
-  fprintf(gp_pipe_h,"set grid\n");
-  fprintf(gp_pipe_h,"set xrange [0:%d]\n",Lx);
-  fprintf(gp_pipe_h,"set yrange [0:%d]\n",Ly);
-  fprintf(gp_pipe_h,"set hidden3d\n");
-  fprintf(gp_pipe_h,"set palette defined (0 '#0000FF', 0.5 '#00FF00', 1 '#FF0000')\n");
-  fflush(gp_pipe_h);
-  
-  // Set file names
-  snprintf(density_file,sizeof(density_file),"density_3D.dat");
-  snprintf(ux_file,sizeof(ux_file),"Ux_velocity_3D.dat");
-  snprintf(uy_file,sizeof(uy_file),"Uy_velocity_3D.dat");
-  snprintf(energy_file,sizeof(energy_file),"energy_3D.dat");
-  snprintf(h_file,sizeof(h_file),"h_function_3D.dat");
+  configureGnuplotPipe(gp_pipe_rho,"rho");
+  configureGnuplotPipe(gp_pipe_jx,"jx");
+  configureGnuplotPipe(gp_pipe_jy,"jy");
+  configureGnuplotPipe(gp_pipe_rho_e,"rho_e");
+  configureGnuplotPipe(gp_pipe_h,"h");
 }
 
 RESULTS::~RESULTS(){
-  pclose(gp_pipe_density);
-  pclose(gp_pipe_ux);
-  pclose(gp_pipe_uy);
-  pclose(gp_pipe_energy);
+  // close gnuplot pipes
+  pclose(gp_pipe_rho);
+  pclose(gp_pipe_jx);
+  pclose(gp_pipe_jy);
+  pclose(gp_pipe_rho_e);
   pclose(gp_pipe_h);
 }
 
-/*void RESULTS::plotDensity(int t){
-  FILE *tmp = fopen(density_file,"w");
-  for(int iy=0;iy<Ly;iy+=2){
-    for(int ix=0;ix<Lx;ix+=2){
-      int idx = ix + iy*Lx;
-      fprintf(tmp,"%d %d %f\n",ix,iy,*(lbm->h_rho+idx));
-    }
-    fprintf(tmp,"\n");
-  }
-  fclose(tmp);
-  
-  fprintf(gp_pipe_density, "set title 'Density - t=%d'\n",t);
-  fprintf(gp_pipe_density, "splot '%s' with points pt 5 ps 0.5 palette\n",density_file);
-  fflush(gp_pipe_density);
+void RESULTS::configureGnuplotPipe(FILE *gp_pipe,const char *title){
+  fprintf(gp_pipe,"set xlabel 'ix'\n");
+  fprintf(gp_pipe,"set ylabel ' '\n");
+  fprintf(gp_pipe,"set grid\n");
+  fprintf(gp_pipe,"set xrange [0:%d]\n",Lx);
+  fprintf(gp_pipe,"set title '%s'\n",title);
+  fflush(gp_pipe);
 }
 
-void RESULTS::plotUxVelocity(int t){
-  FILE *tmp = fopen(ux_file,"w");
-  for(int iy=0;iy<Ly;iy+=2){
-    for(int ix=0;ix<Lx;ix+=2){
-      int idx = ix + iy*Lx;
-      double ux = *(lbm->h_jx+idx)/(*(lbm->h_rho+idx));
-      fprintf(tmp,"%d %d %f\n",ix,iy,ux);
-    }
-    fprintf(tmp,"\n");
-  }
-  fclose(tmp);
-  
-  fprintf(gp_pipe_ux,"set title 'Ux Velocity Components - t=%d'\n",t);
-  fprintf(gp_pipe_ux,"splot '%s' with points pt 5 ps 0.5 palette\n",ux_file);
-  fflush(gp_pipe_ux);
-}
-
-void RESULTS::plotUyVelocity(int t){
-  FILE *tmp = fopen(uy_file,"w");
-  for(int iy=0;iy<Ly;iy+=2){
-    for(int ix=0;ix<Lx;ix+=2){
-      int idx = ix + iy*Lx;
-      double uy = *(lbm->h_jy+idx)/(*(lbm->h_rho+idx));
-      fprintf(tmp,"%d %d %f\n",ix,iy,uy);
-    }
-    fprintf(tmp,"\n");
-  }
-  fclose(tmp);
-  
-  fprintf(gp_pipe_uy,"set title 'Uy Velocity Components - t=%d'\n",t);
-  fprintf(gp_pipe_uy,"splot '%s' with points pt 5 ps 0.5 palette\n",uy_file);
-  fflush(gp_pipe_uy);
-}
-
-void RESULTS::plotEnergy(int t){
-  FILE *tmp = fopen(energy_file,"w");
-  for(int iy=0;iy<Ly;iy+=2){
-    for(int ix=0;ix<Lx;ix+=2){
-      int idx = ix + iy*Lx;
-      fprintf(tmp,"%d %d %f\n",ix,iy,*(lbm->h_rho_e+idx));
-    }
-    fprintf(tmp,"\n");
-  }
-  fclose(tmp);
-  
-  fprintf(gp_pipe_energy,"set title 'Internal Energy - t=%d'\n",t);
-  fprintf(gp_pipe_energy,"splot '%s' with points pt 5 ps 0.5 palette\n",energy_file);
-  fflush(gp_pipe_energy);
+/*double RESULTS::analytical_rho(int ix,int iy,int t){
+  double sigma2 = sigma*sigma + 2.0*nu*t;
+  return RHO0 + amplitude*(sigma*sigma/sigma2)*exp(-((ix-0.5*Lx)*(ix-0.5*Lx)+(iy-0.5*Ly)*(iy-0.5*Ly))/(2.0*sigma2));
   }*/
 
-void RESULTS::plotAll(int t){
-  FILE *tmp_density = fopen(density_file,"w");
-  FILE *tmp_ux = fopen(ux_file,"w");
-  FILE *tmp_uy = fopen(uy_file,"w");
-  FILE *tmp_energy = fopen(energy_file,"w");
-  FILE *tmp_h = fopen(h_file,"w");
+ void RESULTS::writeMacrosData(const char *filename,double *data){
+   FILE *tmp = fopen(filename,"w"); 
+   int iy=0.5*Ly;
+   for(int ix=0;ix<Lx;ix++){
+     int idx = ix + iy*Lx;
+     fprintf(tmp,"%d %e\n",ix,*(data+idx));
+   }
+   fclose(tmp);
+ }
 
-  for(int iy=0;iy<Ly;iy+=2){
-    for(int ix=0;ix<Lx;ix+=2){
-      int idx = ix + iy*Lx;
-      double rho = *(lbm->h_rho+idx);
+void RESULTS::plotMacros(int t){
+  CUDA_CHECK(cudaMemcpy((void*)(lbm->h_rho+0+0*Lx),(const void*)(lbm->d_rho+0+0*Lx),(size_t)Lx*Ly*sizeof(double),cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy((void*)(lbm->h_jx+0+0*Lx),(const void*)(lbm->d_jx+0+0*Lx),(size_t)Lx*Ly*sizeof(double),cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy((void*)(lbm->h_jy+0+0*Lx),(const void*)(lbm->d_jy+0+0*Lx),(size_t)Lx*Ly*sizeof(double),cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy((void*)(lbm->h_rho_e+0+0*Lx),(const void*)(lbm->d_rho_e+0+0*Lx),(size_t)Lx*Ly*sizeof(double),cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy((void*)(lbm->h_h+0+0*Lx),(const void*)(lbm->d_h+0+0*Lx),(size_t)Lx*Ly*sizeof(double),cudaMemcpyDeviceToHost));
 
-      // Density
-      fprintf(tmp_density,"%d %d %f\n",ix,iy,rho);
+  writeMacrosData("rho_2D.dat",lbm->h_rho);
+  writeMacrosData("jx_2D.dat",lbm->h_jx);
+  writeMacrosData("jy_2D.dat",lbm->h_jy);
+  writeMacrosData("rho_e_2D.dat",lbm->h_rho_e);
+  writeMacrosData("h_2D.dat",lbm->h_h);
 
-      // Velocity components
-      double ux = *(lbm->h_jx+idx)/rho;
-      double uy = *(lbm->h_jy+idx)/rho;
-      fprintf(tmp_ux,"%d %d %f\n",ix,iy,ux);
-      fprintf(tmp_uy,"%d %d %f\n",ix,iy,uy);
+  fprintf(gp_pipe_rho,"set title 'rho - t=%d (max=) (min=)'\n",t);
+  fprintf(gp_pipe_rho,"plot 'rho_2D.dat' with lines lw 0.2\n");
+  fflush(gp_pipe_rho); 
 
-      // Internal energy
-      fprintf(tmp_energy,"%d %d %f\n",ix,iy,*(lbm->h_rho_e+idx));
+  fprintf(gp_pipe_jx,"set title 'jx - t=%d (max=) (min=)'\n",t);
+  fprintf(gp_pipe_jx,"plot 'jx_2D.dat' with lines lw 0.1\n");
+  fflush(gp_pipe_jx);
 
-      // h = f*log(f)
-      double h = 0.0;
-      for(int iz=0;iz<Q;iz++){
-	double f = *(lbm->h_f+idx+iz*Lx*Ly);
-	if(f > 1e-15){
-	  h += f*log(f);
-	}
-      }
-      fprintf(tmp_h,"%d %d %f\n",ix,iy,h);
-    }
-    fprintf(tmp_density,"\n");
-    fprintf(tmp_ux,"\n");
-    fprintf(tmp_uy,"\n");
-    fprintf(tmp_energy,"\n");
-    fprintf(tmp_h,"\n");
-  }
-  fclose(tmp_density);
-  fclose(tmp_ux);
-  fclose(tmp_uy);
-  fclose(tmp_energy);
-  fclose(tmp_h);
+  fprintf(gp_pipe_jy,"set title 'jy - t=%d (max=) (min=)'\n",t);
+  fprintf(gp_pipe_jy,"plot 'jy_2D.dat' with lines lw 0.1\n");
+  fflush(gp_pipe_jy);
 
-  // Plot all five
-  fprintf(gp_pipe_density,"set title 'Density - t=%d'\n",t);
-  fprintf(gp_pipe_density,"splot '%s' with points pt 5 ps 0.5 palette\n",density_file);
-  fflush(gp_pipe_density);
+  fprintf(gp_pipe_rho_e,"set title 'rho_e - t=%d (max=) (min=)'\n", t);
+  fprintf(gp_pipe_rho_e,"plot 'rho_e_2D.dat' with lines lw 0.1\n");
+  fflush(gp_pipe_rho_e);
 
-  fprintf(gp_pipe_ux,"set title 'Ux Velocity Components - t=%d'\n",t);
-  fprintf(gp_pipe_ux,"splot '%s' with points pt 5 ps 0.5 palette\n",ux_file);
-  fflush(gp_pipe_ux);
-  
-  fprintf(gp_pipe_uy,"set title 'Uy Velocity Components - t=%d'\n",t);
-  fprintf(gp_pipe_uy,"splot '%s' with points pt 5 ps 0.5 palette\n",uy_file);
-  fflush(gp_pipe_uy);
-
-  fprintf(gp_pipe_energy,"set title 'Internal Energy - t=%d'\n",t);
-  fprintf(gp_pipe_energy,"splot '%s' with points pt 5 ps 0.5 palette\n",energy_file);
-  fflush(gp_pipe_energy);
-
-  fprintf(gp_pipe_h,"set title 'function h=f*log(f) - t=%d'\n",t);
-  fprintf(gp_pipe_h,"splot '%s' with points pt 5 ps 0.5 palette\n",h_file);
+  fprintf(gp_pipe_h,"set title 'h - t=%d (max=, min=)'\n", t);
+  fprintf(gp_pipe_h,"plot 'h_2D.dat' with lines lw 0.1\n");
   fflush(gp_pipe_h);
+  
+  usleep(1000000);
+}
 
 
   
-  /*plotDensity((int) t);
-  plotUxVelocity((int) t);
-  plotUyVelocity((int) t);
-  plotEnergy((int) t);
-  plotEntropy((int)t);*/
-  usleep(2000000);
-}
-
-void RESULTS::saveDensity(const char* filename,int t){
-  FILE *tmp = fopen(filename,"w");
-  for(int iy=0;iy<Ly;iy++){
-    for(int ix=0;ix<Lx;ix++){
-      int idx = ix + iy*Lx;
-      fprintf(tmp,"%d %d %f\n",ix,iy,*(lbm->h_rho+idx));
-    }
-    fprintf(tmp,"\n");
-  }
-  fclose(tmp);
-}
-
-void RESULTS::saveVelocity(const char* filename,int t){
-  FILE *tmp = fopen(filename,"w");
-  for(int iy=0;iy<Ly;iy++){
-    for(int ix=0;ix<Lx;ix++){
-      int idx = ix + iy*Lx;
-      double ux = *(lbm->h_jx+idx)/(*(lbm->h_rho+idx));
-      double uy = *(lbm->h_jy+idx)/(*(lbm->h_rho+idx));
-      fprintf(tmp,"%d %d %f %f\n",ix,iy,ux,uy);
-    }
-    fprintf(tmp,"\n");
-  }
-  fclose(tmp);
-}
-
-void RESULTS::saveAll(const char* basename,int t){
-  char filename[256];
-  snprintf(filename, sizeof(filename),"%s_density_%d.dat",basename,t);
-  saveDensity(filename,t);
-  snprintf(filename, sizeof(filename),"%s_velocity_%d.dat",basename,t);
-  saveVelocity(filename,t);
-}
