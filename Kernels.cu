@@ -49,9 +49,9 @@ __global__ void computeFeqKernel(double *d_rho,double *d_jx,double *d_jy,double 
 }
 
 // =========================================================================
-// COMPUTE ERRORS KERNEL (All diagnostics on GPU)
+// COMPUTE COLLISION ERRORS KERNEL (All diagnostics on GPU)
 // =========================================================================
-__global__ void computeErrorsKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
+__global__ void computeCollisionErrorsKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
   
@@ -185,29 +185,6 @@ __global__ void renderAndfillKernel(uchar4 *d_color,double *d_positions,double *
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // =========================================================================
 // COLLISION KERNEL
 // =========================================================================
@@ -223,9 +200,61 @@ __global__ void collisionKernel(double *d_f,double *d_feq){
 }
 
 // =========================================================================
+// COMPUTE LOCAL ERRORS KERNEL
+// =========================================================================
+__global__ void computeLocalErrorsKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
+  int i = threadIdx.x + blockIdx.x*blockDim.x;
+  int j = threadIdx.y + blockIdx.y*blockDim.y;
+
+  if(i<Lx && j<Ly){
+    int id = i + j*Lx;
+
+    // Read after collision from buffer
+    double rho_fcollision=0.0,jx_fcollision=0.0,jy_fcollision=0.0,rhoE_fcollision=0.0;
+    double hf=0.0,hfcollision=0.0;
+    for(int kaux=0;kaux<Q;kaux++){
+      double f = *(d_f+id+kaux*Lx*Ly);
+      double fcollision = *(d_f+id+(kaux+Q)*Lx*Ly);
+      
+      rho_fcollision += fcollision;
+      jx_fcollision += *(d_Cx+kaux)*fcollision;
+      jy_fcollision += *(d_Cy+kaux)*fcollision;
+      rhoE_fcollision += 0.5*(d_Cx[kaux]*d_Cx[kaux]+d_Cy[kaux]*d_Cy[kaux])*fcollision;
+      if(f>1e-12){
+	hf += f*log(f/fcollision);
+	hfcollision += fcollision*log(f/fcollision);
+      }
+    }
+
+    double rho_e_fcollision = rhoE_fcollision - 0.5*rho_fcollision*(jx_fcollision*jx_fcollision/(rho_fcollision*rho_fcollision)+jy_fcollision*jy_fcollision/(rho_fcollision*rho_fcollision));
+
+    *(d_mass_err+id) = fabs(*(d_rho+id)-rho_fcollision);
+    *(d_momX_err+id) = fabs(*(d_jx+id)-jx_fcollision);
+    *(d_momY_err+id) = fabs(*(d_jy+id)-jy_fcollision);
+    *(d_energy_err+id) = fabs(*(d_rho_e+id)-rho_e_fcollision);
+    *(d_hfhfeq_diff+id) = hf-hfcollision;
+  }
+}
+
+// =========================================================================
+// MARK LOCATION OF ENTROPY VIOLATIONS
+// =========================================================================
+__global__ void markEntropyViolationsKernel(double *d_hfhfeq_diff,int *d_violation_mask){
+  int i = threadIdx.x + blockIdx.x*blockDim.x;
+  int j = threadIdx.y + blockIdx.y*blockDim.y;
+  
+  if(i<Lx && j<Ly){
+    int id = i + j*Lx;
+    *(d_violation_mask+id) = 0;
+    if(*(d_hfhfeq_diff+id)<0.0){
+      *(d_violation_mask+id) = 1;
+    }
+  }
+}
+
+// =========================================================================
 // STREAMING KERNEL
 // =========================================================================
-
 __global__ void streamKernel(double *d_f){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
@@ -237,4 +266,3 @@ __global__ void streamKernel(double *d_f){
     *(d_f+dest_i+dest_j*Lx+k*Lx*Ly) = *(d_f+i+j*Lx+(k+Q)*Lx*Ly);
   }
 }
-

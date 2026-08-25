@@ -23,18 +23,6 @@ KernelsManager::~KernelsManager(void){
   cudaFree(d_max_temp);
 }
 
-void KernelsManager::launchCollision(double *d_f,double *d_feq){
-  collisionKernel<<<gridSize3D,blockSize3D>>>((double*)d_f,(double*)d_feq);
-  KERNEL_CHECK();
-  SYNC_CHECK();
-}
-
-void KernelsManager::launchStream(double *d_f){
-  streamKernel<<<gridSize3D,blockSize3D>>>((double*)d_f);
-  KERNEL_CHECK();
-  SYNC_CHECK();
-}
-
 void KernelsManager::launchComputeMacros(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h){
   computeMacrosKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h);
   KERNEL_CHECK();
@@ -47,8 +35,8 @@ void KernelsManager::launchComputeFeq(double *d_rho,double *d_jx,double *d_jy,do
   SYNC_CHECK();
 }
 
-void KernelsManager::launchComputeErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
-  computeErrorsKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(double*)d_feq,(double*)d_mass_err,(double*)d_momX_err,(double*)d_momY_err,(double*)d_energy_err,(double*)d_hfhfeq_diff);
+void KernelsManager::launchComputeCollisionErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
+  computeCollisionErrorsKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(double*)d_feq,(double*)d_mass_err,(double*)d_momX_err,(double*)d_momY_err,(double*)d_energy_err,(double*)d_hfhfeq_diff);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
@@ -94,4 +82,27 @@ void KernelsManager::launchRenderAndFill(uchar4 *d_color,double *d_positions,dou
   SYNC_CHECK();
   viz->unmapVBOs();
   viz->display((int)t,(double)min_val,(double)max_val);
+}
+
+void KernelsManager::launchCollision(double *d_f,double *d_feq){
+  collisionKernel<<<gridSize3D,blockSize3D>>>((double*)d_f,(double*)d_feq);
+  KERNEL_CHECK();
+  SYNC_CHECK();
+}
+
+void KernelsManager::launchComputeLocalErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
+  computeLocalErrorsKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(double*)d_mass_err,(double*)d_momX_err,(double*)d_momY_err,(double*)d_energy_err,(double*)d_hfhfeq_diff);
+  KERNEL_CHECK();
+  SYNC_CHECK();
+}
+void KernelsManager::launchMarkEntropyViolationsKernel(double *d_hfhfeq_diff,int *d_violation_mask){
+  markEntropyViolationsKernel<<<gridSize2D,blockSize2D>>>((double*)d_hfhfeq_diff,(int*)d_violation_mask);
+  KERNEL_CHECK();
+  SYNC_CHECK();
+}
+
+void KernelsManager::launchStream(double *d_f){
+  streamKernel<<<gridSize3D,blockSize3D>>>((double*)d_f);
+  KERNEL_CHECK();
+  SYNC_CHECK();
 }

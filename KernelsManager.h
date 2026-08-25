@@ -23,13 +23,21 @@ class KernelsManager{
   ~KernelsManager(void);
 
   // Launch kernels
-  void launchCollision(double *d_f,double *d_feq);
-  void launchStream(double *d_f);
   void launchComputeMacros(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h);
   void launchComputeFeq(double *d_rho,double *d_jx,double *d_jy,double *d_feq);
-  void launchComputeErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double* d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff);
+
+  void launchComputeCollisionErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double* d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff);
   void findMinMax(double *d_data,double *min_val,double *max_val);
   void launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_data,int t);
+  
+  void launchCollision(double *d_f,double *d_feq);
+
+  void launchComputeLocalErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double* d_h,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff);
+  void launchMarkEntropyViolationsKernel(double *d_hfhfeq_diff,int *d_violation_mask);
+  
+  void launchStream(double *d_f);
+
+  
   };
 
 #endif
