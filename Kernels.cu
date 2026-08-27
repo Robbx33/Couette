@@ -221,8 +221,8 @@ __global__ void computeLocalErrorsKernel(double *d_f,double *d_rho,double *d_jx,
       jy_fcollision += *(d_Cy+kaux)*fcollision;
       rhoE_fcollision += 0.5*(d_Cx[kaux]*d_Cx[kaux]+d_Cy[kaux]*d_Cy[kaux])*fcollision;
       if(f>1e-12){
-	hf += f*log(f/fcollision);
-	hfcollision += fcollision*log(f/fcollision);
+	hf += f*log(f);
+	hfcollision += fcollision*log(fcollision);
       }
     }
 

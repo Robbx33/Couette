@@ -38,7 +38,7 @@ int main(int argc,char **argv){
 
     if(t%1==0){
       Noah.markEntropyViolations((int)t);
-      //Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Gauss.get_d_h(),(int)t);
+      Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Noah.get_d_hfhfeq_diff(),(int)t);
     }
     
     Gargantua.launchStream((double*)Gauss.get_d_f());
