@@ -12,7 +12,7 @@
 #define dx 1.0
 #define c_s (dx/(sqrt(3.0)*dt))
 #define c_s2 (c_s*c_s)
-#define nu 0.15
+#define nu 0.1
 #define Tau (nu/c_s2 + 0.5*dt)
 #define Omega (dt/Tau)
 #define OmegaPrima (1.0 - Omega)

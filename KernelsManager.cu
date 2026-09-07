@@ -23,20 +23,19 @@ KernelsManager::~KernelsManager(void){
   cudaFree(d_max_temp);
 }
 
-void KernelsManager::launchComputeMacros(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h){
-  computeMacrosKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h);
+void KernelsManager::launchComputeMacros(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,int offset){
+  computeMacrosKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(int)offset);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
-
 void KernelsManager::launchComputeFeq(double *d_rho,double *d_jx,double *d_jy,double *d_feq){
   computeFeqKernel<<<gridSize3D,blockSize3D>>>((double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_feq);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
-
-void KernelsManager::launchComputeCollisionErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
-  computeCollisionErrorsKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(double*)d_feq,(double*)d_mass_err,(double*)d_momX_err,(double*)d_momY_err,(double*)d_energy_err,(double*)d_hfhfeq_diff);
+  
+void KernelsManager::launchComputeCollisionErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff){
+  computeCollisionErrorsKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(double*)d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
@@ -90,13 +89,23 @@ void KernelsManager::launchCollision(double *d_f,double *d_feq){
   SYNC_CHECK();
 }
 
-void KernelsManager::launchComputeLocalErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_mass_err,double *d_momX_err,double *d_momY_err,double *d_energy_err,double *d_hfhfeq_diff){
-  computeLocalErrorsKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(double*)d_mass_err,(double*)d_momX_err,(double*)d_momY_err,(double*)d_energy_err,(double*)d_hfhfeq_diff);
+void KernelsManager::launchComputeLocalErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff,int offset){
+  computeLocalErrorsKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(double*)d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff,(int)offset);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
-void KernelsManager::launchMarkEntropyViolationsKernel(double *d_hfhfeq_diff,int *d_violation_mask){
-  markEntropyViolationsKernel<<<gridSize2D,blockSize2D>>>((double*)d_hfhfeq_diff,(int*)d_violation_mask);
+void KernelsManager::launchMarkEntropyViolations(double *d_entropy_diff,int *d_violation_mask,int offset){
+  markEntropyViolationsKernel<<<gridSize2D,blockSize2D>>>((double*)d_entropy_diff,(int*)d_violation_mask,(int)offset);
+  KERNEL_CHECK();
+  SYNC_CHECK();
+}
+void KernelsManager::launchFindOmegaEff(double *d_f,double *d_feq,double *d_omega_eff,int *d_violation_mask,int offset){
+  findOmegaEffKernel<<<gridSize2D,blockSize2D>>>((double*)d_f,(double*)d_feq,(double*)d_omega_eff,(int*)d_violation_mask,(int)offset);
+  KERNEL_CHECK();
+  SYNC_CHECK();
+}
+void KernelsManager::launchEntropicCollision(double *d_f,double *d_feq,double *d_omega_eff,int *d_violation_mask,int offset){
+  entropicCollisionKernel<<<gridSize3D,blockSize3D>>>((double*)d_f,(double*)d_feq,(double*)d_omega_eff,(int*)d_violation_mask,(int)offset);
   KERNEL_CHECK();
   SYNC_CHECK();
 }

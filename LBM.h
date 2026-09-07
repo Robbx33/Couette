@@ -4,9 +4,11 @@
 
 #include "Constants.h"
 #include "error.h"
+#include "KernelsManager.h"
 
 class LATTICEBOLTZMANN{
 private:
+  KernelsManager *km;
   // Host data
   double *h_f,*h_rho,*h_jx,*h_jy,*h_rho_e,*h_h,*h_feq;
   int *h_Cx,*h_Cy;
@@ -18,8 +20,13 @@ private:
   friend class PHYSICSCHECKER;
   friend class RESULTS;
 public:
-  LATTICEBOLTZMANN(void);
+  LATTICEBOLTZMANN(KernelsManager *Gargantua);
   ~LATTICEBOLTZMANN(void);
+
+  void computeMacros(int offset);
+  void computeFeq(void);
+  void Collision(void);
+  void Stream(void);
   
   // Getters for main
   double *get_d_f(){return d_f;}

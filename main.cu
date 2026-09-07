@@ -9,9 +9,10 @@
 using namespace std;
 
 int main(int argc,char **argv){
-  LATTICEBOLTZMANN Gauss;
+
   Visualizer Roberto((int)argc,(char**)argv);
   KernelsManager Gargantua((Visualizer*)&Roberto);
+  LATTICEBOLTZMANN Gauss((KernelsManager*)&Gargantua);
   PHYSICSCHECKER Noah((LATTICEBOLTZMANN*)&Gauss,(KernelsManager*)&Gargantua);
   RESULTS Jeremias((LATTICEBOLTZMANN*)&Gauss);
 
@@ -21,27 +22,19 @@ int main(int argc,char **argv){
   cout<<"=============================="<<endl;
   
   for(int t=0;t<2000;t++){
-    // Compute
-    Gargantua.launchComputeMacros((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h());
-    Gargantua.launchComputeFeq((double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_feq());
-
-    //if(t%1==0){
-      //Gargantua.launchComputeCollisionErrors((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h(),(double*)Gauss.get_d_feq(),(double*)Noah.get_d_mass_err(),(double*)Noah.get_d_momX_err(),(double*)Noah.get_d_momY_err(),(double*)Noah.get_d_energy_err(),(double*)Noah.get_d_hfhfeq_diff());
-      //Noah.doubleCheckPhysics((int)t);
-      //Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Gauss.get_d_h(),(int)t);
-      //Jeremias.plotMacros((int)t);
-    //}
-    
-    Gargantua.launchCollision((double*)Gauss.get_d_f(),(double*)Gauss.get_d_feq());
-    
-    Gargantua.launchComputeLocalErrors((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h(),(double*)Noah.get_d_mass_err(),(double*)Noah.get_d_momX_err(),(double*)Noah.get_d_momY_err(),(double*)Noah.get_d_energy_err(),(double*)Noah.get_d_hfhfeq_diff());
+    Gauss.computeMacros(0);
+    Gauss.computeFeq();
 
     if(t%1==0){
-      Noah.markEntropyViolations((int)t);
-      Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Noah.get_d_hfhfeq_diff(),(int)t);
+      Gargantua.launchComputeCollisionErrors((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h(),(double*)Gauss.get_d_feq(),(double*)Noah.get_d_mass_diff(),(double*)Noah.get_d_momX_diff(),(double*)Noah.get_d_momY_diff(),(double*)Noah.get_d_energy_diff(),(double*)Noah.get_d_entropy_diff());
+      //Noah.doubleCheckPhysics((int)t);
+      Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Noah.get_d_entropy_diff(),(int)t);
+      //Jeremias.plotMacros((int)t);
     }
     
-    Gargantua.launchStream((double*)Gauss.get_d_f());
+    Gauss.Collision();
+    Noah.entropyLocalConservation(t,1);
+    Gauss.Stream();
   }
 
   return 0;
