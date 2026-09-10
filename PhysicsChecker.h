@@ -1,4 +1,17 @@
-// PhysicsChecker.h
+// The #ifndef / #define / #endif block below is an "include guard".
+//
+// Without it, if this header is included more than once in the same
+// compilation (e.g., directly by main.cu and also indirectly through
+// another header), the compiler would read the class definition twice
+// and fail with a "redefinition" error.
+//
+// How it works:
+//   - First inclusion:  PHYSICSCHECKER_H is not defined -> enter, read the class,
+//                       and #define PHYSICSCHECKER_H to mark it as "already read".
+//   - Any later inclusion: PHYSICSCHECKER_H is already defined -> skip everything
+//                          until #endif. The class is not read again.
+//
+// Purely a compile-time mechanism. Nothing to do with objects or runtime.
 #ifndef PHYSICSCHECKER_H
 #define PHYSICSCHECKER_H
 

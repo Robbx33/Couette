@@ -36,6 +36,6 @@ int main(int argc,char **argv){
     Noah.entropyLocalConservation(t,1);
     Gauss.Stream();
   }
-
+  
   return 0;
 }
