@@ -175,16 +175,19 @@ void LATTICEBOLTZMANN::computeFeq(void){
 // ===========================================================
 // Collision-LATTICEBOLTZMANN
 // ===========================================================
-void LATTICEBOLTZMANN::Collision(void){
+void LATTICEBOLTZMANN::Collision(int offset){
   // launches kernel to perform GPU collision
-  km->launchCollision((double*)d_f,(double*)d_feq);
+  km->launchCollision((double*)d_f,(double*)d_feq,(int)offset);
+
+  // Compute post-collision macros
+  km->launchComputeMacros((double*)d_f,(double*)d_rho,(double*)d_jx,(double*)d_jy,(double*)d_rho_e,(double*)d_h,(int)offset);
 }
 
 // ===========================================================
 // Stream-LATTICEBOLTZMANN
 // ===========================================================
-void LATTICEBOLTZMANN::Stream(void){
+void LATTICEBOLTZMANN::Stream(int offset){
   // launches kernel to perform GPU stream
-  km->launchStream((double*)d_f);
+  km->launchStream((double*)d_f,(int)offset);
 }
 

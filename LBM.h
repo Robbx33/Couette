@@ -75,8 +75,8 @@ public:
   // equilibrium distribution, perform the collision, and stream.
   void computeMacros(int offset);
   void computeFeq(void);
-  void Collision(void);
-  void Stream(void);
+  void Collision(int offset);
+  void Stream(int offset);
   
   // Public accessors for the device arrays, so main() can pass them as
   // arguments to the KernelsManager and PhysicsChecker methods

@@ -117,11 +117,11 @@ __global__ void computeCollisionErrorsKernel(double *d_f,double *d_rho,double *d
     *(d_momX_diff+id) = fabs(jx_feq-*(d_jx+id));
     *(d_momY_diff+id) = fabs(jy_feq-*(d_jy+id));
     *(d_energy_diff+id) = fabs(energy_feq-*(d_rho_e+id));
-    *(d_entropy_diff+id) = hfeq-*(d_h+id);
+    *(d_entropy_diff+id) = *(d_h+id)-hfeq;
   }
 }
 
-__global__ void findMinMaxKernel(double *d_data,double *d_min,double *d_max){
+__global__ void findMinMaxKernel(double *d_data,double *d_min,double *d_max,int offset){
   __shared__ double s_min[THREADS_PER_BLOCK];
   __shared__ double s_max[THREADS_PER_BLOCK];
   int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -130,8 +130,8 @@ __global__ void findMinMaxKernel(double *d_data,double *d_min,double *d_max){
   
   int tid = threadIdx.x + threadIdx.y*blockDim.x;
   if(i<Lx && j<Ly){
-    *(s_min+tid) = *(d_data+id);
-    *(s_max+tid) = *(d_data+id);
+    *(s_min+tid) = *(d_data+id+offset*Lx*Ly);
+    *(s_max+tid) = *(d_data+id+offset*Lx*Ly);
   }
   else{
     *(s_min+tid) = 1.0e30;
@@ -222,14 +222,14 @@ __global__ void renderAndfillKernel(uchar4 *d_color,double *d_positions,double *
 // =========================================================================
 // COLLISION KERNEL
 // =========================================================================
-__global__ void collisionKernel(double *d_f,double *d_feq){
+__global__ void collisionKernel(double *d_f,double *d_feq,int offset){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
   int k = threadIdx.z;
   
   if(i<Lx && j<Ly && k<Q){
     int id = i + j*Lx;
-    *(d_f+id+(k+Q)*Lx*Ly) = *(d_f+id+k*Lx*Ly)*OmegaPrima + *(d_feq+id+k*Lx*Ly)*Omega; 
+    *(d_f+id+(k+offset*Q)*Lx*Ly) = *(d_f+id+k*Lx*Ly)*OmegaPrima + *(d_feq+id+k*Lx*Ly)*Omega; 
   }
 }
 
@@ -246,7 +246,7 @@ __global__ void computeLocalErrorsKernel(double *d_f,double *d_rho,double *d_jx,
     *(d_momX_diff+id+offset*Lx*Ly) = fabs(*(d_jx+id+offset*Lx*Ly)-*(d_jx+id));
     *(d_momY_diff+id+offset*Lx*Ly) = fabs(*(d_jy+id+offset*Lx*Ly)-*(d_jy+id));
     *(d_energy_diff+id+offset*Lx*Ly) = fabs(*(d_rho_e+id+offset*Lx*Ly)-*(d_rho_e+id));
-    *(d_entropy_diff+id+offset*Lx*Ly) = *(d_h+id+offset*Lx*Ly)-*(d_h+id);
+    *(d_entropy_diff+id+offset*Lx*Ly) = *(d_h+id)-*(d_h+id+offset*Lx*Ly);
   }
 }
 
@@ -260,7 +260,7 @@ __global__ void markEntropyViolationsKernel(double *d_entropy_diff,int *d_violat
   if(i<Lx && j<Ly){
     int id = i + j*Lx;
     *(d_violation_mask+id) = 0;
-    if(*(d_entropy_diff+id+offset*Lx*Ly)>0){
+    if(*(d_entropy_diff+id+offset*Lx*Ly)<0){
       *(d_violation_mask+id) = 1;
     }
   }
@@ -421,7 +421,7 @@ __global__ void entropicCollisionKernel(double *d_f,double *d_feq,double *d_omeg
 // =========================================================================
 // STREAMING KERNEL
 // =========================================================================
-__global__ void streamKernel(double *d_f){
+__global__ void streamKernel(double *d_f,int offset){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
   int k = threadIdx.z;
@@ -429,6 +429,6 @@ __global__ void streamKernel(double *d_f){
   if(i<Lx && j<Ly && k<Q){
     int dest_i = (i+d_Cx[k]+Lx)%Lx;
     int dest_j = (j+d_Cy[k]+Ly)%Ly;
-    *(d_f+dest_i+dest_j*Lx+k*Lx*Ly) = *(d_f+i+j*Lx+(k+Q)*Lx*Ly);
+    *(d_f+dest_i+dest_j*Lx+k*Lx*Ly) = *(d_f+i+j*Lx+(k+offset*Q)*Lx*Ly);
   }
 }

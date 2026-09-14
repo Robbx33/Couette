@@ -27,14 +27,19 @@ int main(int argc,char **argv){
 
     if(t%1==0){
       Gargantua.launchComputeCollisionErrors((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h(),(double*)Gauss.get_d_feq(),(double*)Noah.get_d_mass_diff(),(double*)Noah.get_d_momX_diff(),(double*)Noah.get_d_momY_diff(),(double*)Noah.get_d_energy_diff(),(double*)Noah.get_d_entropy_diff());
-      //Noah.doubleCheckPhysics((int)t);
-      Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Noah.get_d_entropy_diff(),(int)t);
+      Noah.doubleCheckPhysics((int)t,0);
+      //Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Noah.get_d_entropy_diff(),(int)t);
       //Jeremias.plotMacros((int)t);
     }
     
-    Gauss.Collision();
-    Noah.entropyLocalConservation(t,1);
-    Gauss.Stream();
+    Gauss.Collision(1);
+    Noah.conservationRestrictionViolations((int)t,1);
+    //Noah.doubleCheckPhysics((int)t,1);
+    Noah.applyELBM(1);
+    Noah.conservationRestrictionViolations((int)t,1);
+    //Noah.doubleCheckPhysics((int)t,1);
+    
+    Gauss.Stream(1);
   }
   
   return 0;

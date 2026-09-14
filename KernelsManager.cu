@@ -40,8 +40,8 @@ void KernelsManager::launchComputeCollisionErrors(double *d_f,double *d_rho,doub
   SYNC_CHECK();
 }
 
-void KernelsManager::findMinMax(double *d_data,double *min_val,double *max_val){
-  findMinMaxKernel<<<gridSize2D,blockSize2D>>>((double*)d_data,(double*)d_min_temp,(double*)d_max_temp);
+void KernelsManager::findMinMax(double *d_data,double *min_val,double *max_val,int offset){
+  findMinMaxKernel<<<gridSize2D,blockSize2D>>>((double*)d_data,(double*)d_min_temp,(double*)d_max_temp,(int)offset);
   KERNEL_CHECK();
   SYNC_CHECK();
   
@@ -62,7 +62,7 @@ void KernelsManager::findMinMax(double *d_data,double *min_val,double *max_val){
 
 void KernelsManager::launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_data,int t){
   double min_val,max_val;
-  findMinMax((double*)d_data,(double*)&min_val,(double*)&max_val);
+  findMinMax((double*)d_data,(double*)&min_val,(double*)&max_val,0);
   /*
     offset = the center of your data range
     scale = the radius of your data range (half the width)
@@ -83,8 +83,8 @@ void KernelsManager::launchRenderAndFill(uchar4 *d_color,double *d_positions,dou
   viz->display((int)t,(double)min_val,(double)max_val);
 }
 
-void KernelsManager::launchCollision(double *d_f,double *d_feq){
-  collisionKernel<<<gridSize3D,blockSize3D>>>((double*)d_f,(double*)d_feq);
+void KernelsManager::launchCollision(double *d_f,double *d_feq,int offset){
+  collisionKernel<<<gridSize3D,blockSize3D>>>((double*)d_f,(double*)d_feq,(int)offset);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
@@ -110,8 +110,8 @@ void KernelsManager::launchEntropicCollision(double *d_f,double *d_feq,double *d
   SYNC_CHECK();
 }
 
-void KernelsManager::launchStream(double *d_f){
-  streamKernel<<<gridSize3D,blockSize3D>>>((double*)d_f);
+void KernelsManager::launchStream(double *d_f,int offset){
+  streamKernel<<<gridSize3D,blockSize3D>>>((double*)d_f,(int)offset);
   KERNEL_CHECK();
   SYNC_CHECK();
 }
