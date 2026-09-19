@@ -14,7 +14,7 @@ __global__ void computeFeqKernel(double *d_rho,double *d_jx,double *d_jy,double 
 
 __global__ void computeCollisionErrorsKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff);
 __global__ void findMinMaxKernel(double *d_data,double *d_min,double *d_max,int offset);
-__global__ void renderAndfillKernel(uchar4 *d_color,double *d_positions,double *d_uv,double *d_data,double offset,double scale);
+__global__ void renderAndfillKernel(uchar4 *d_color,double *vbo_positions_ptr,double *vbo_uv_ptr,double *d_data,double center,double scale);
 
 __global__ void collisionKernel(double *d_f,double *d_feq,int offset);
 

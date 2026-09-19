@@ -9,11 +9,12 @@ using namespace std;
 // CONSTRUCTOR-PHYSICSCHECKER
 // ===========================================================
 PHYSICSCHECKER::PHYSICSCHECKER(LATTICEBOLTZMANN *Gauss,KernelsManager *Gargantua){  
-  // Point lbm & km at the KernelsManager object passed in.
+  // Point lbm & km at the begining of their respective classes making
+  // them equal to their respective objects passed in.
   lbm = Gauss;
   km = Gargantua;
   
-  // On the CPU and GPU
+  // On the GPU
   // Checks for mass, momentum, internal energy conservation and entropy restriction
   // Σ Ωᵢ(f(x,t)) = 0                 
   // Σ C_iα.Ωᵢ(f(x,t)) = 0       
@@ -29,11 +30,7 @@ PHYSICSCHECKER::PHYSICSCHECKER(LATTICEBOLTZMANN *Gauss,KernelsManager *Gargantua
   // ρ(x,t).u_α(x,t) - ρ^eq(x,t).u_α^eq(x,t) = 0
   // ρ(x,t)E(x,t) - ρ^eq(x,t)E^eq(x,t) = 0
   // h(x,t) - h^eq(x,t) ≤ 0
-  h_mass_diff = (double*)malloc(Lx*Ly*sizeof(double));
-  h_momX_diff = (double*)malloc(Lx*Ly*sizeof(double));
-  h_momY_diff = (double*)malloc(Lx*Ly*sizeof(double));
-  h_energy_diff = (double*)malloc(Lx*Ly*sizeof(double));
-  h_entropy_diff = (double*)malloc(Lx*Ly*sizeof(double));
+  //
   // On the GPU buffer area
   // Checks for mass, momentum, internal energy conservation and entropy restriction all at the same point of space x
   // (ρ(x,t+dt)-ρ(x,t))/dt + 0 = 0
@@ -64,66 +61,26 @@ PHYSICSCHECKER::PHYSICSCHECKER(LATTICEBOLTZMANN *Gauss,KernelsManager *Gargantua
   // On the GPU. There will be a correction of ω by ω_eff(x,t) on those
   // places where there were entropy restriction violations
   CUDA_CHECK(cudaMalloc((void**)&d_omega_eff,Lx*Ly*sizeof(double)));
-
-  // Kill any leftover gnuplot process from a previous run, then wait
-  // 200 ms to make sure it's fully gone before continuing.
-  system("pkill -f gnuplot 2>/dev/null");
-  usleep(200000);
-
-  // Open a pipe to gnuplot and a file to log the physics errors.
-  // The pipe lets us send plot commands directly from C++.
-  // The data file holds the numeric values that gnuplot reads.
-  // first_call flags the very first plot so gnuplot runs 'plot' once,
-  // then 'replot' on every later timestep.
-  gp_pipe = popen("gnuplot -persist", "w");
-  data_file = fopen("conservation&(-restriction)_quantities.dat","w");
-  first_call = 1;
-
-  // Send initial plot configuration to gnuplot through the pipe:
-  // title, axis labels, grid, and a logarithmic y-axis (errors span
-  // many orders of magnitude, so log scale makes them readable).
-  // fflush pushes the commands to gnuplot immediately instead of
-  // waiting for the buffer to fill up
-  fprintf(gp_pipe,"set title 'conservation and (-restriction) quantities vs time'\n");
-  fprintf(gp_pipe,"set xlabel 'time step'\n");
-  fprintf(gp_pipe,"set ylabel 'Error'\n");
-  fprintf(gp_pipe,"set grid\n");
-  fprintf(gp_pipe,"set logscale y\n");
-  fflush(gp_pipe);
 }
 
 // ===========================================================
 // DESTRUCTOR-PHYSICSCHECKER
 // ===========================================================
 PHYSICSCHECKER::~PHYSICSCHECKER(void){
-  // Liberates CPU and GPU memory used by to store Conservative & Restrictive
-  // quantities
-  free(h_mass_diff);
-  free(h_momX_diff);
-  free(h_momY_diff);
-  free(h_energy_diff);
-  free(h_entropy_diff);
-  CUDA_CHECK(cudaFree(d_mass_diff));
-  CUDA_CHECK(cudaFree(d_momX_diff));
-  CUDA_CHECK(cudaFree(d_momY_diff));
-  CUDA_CHECK(cudaFree(d_energy_diff));
-  CUDA_CHECK(cudaFree(d_entropy_diff));
+  // Liberates GPU memory used by to store Conservative & Restrictive
+  // quantities differences
+  CUDA_CHECK(cudaFree((double*)d_mass_diff));
+  CUDA_CHECK(cudaFree((double*)d_momX_diff));
+  CUDA_CHECK(cudaFree((double*)d_momY_diff));
+  CUDA_CHECK(cudaFree((double*)d_energy_diff));
+  CUDA_CHECK(cudaFree((double*)d_entropy_diff));
   
   // Liberates CPU and GPU memory used to mark entropy violations
-  free(h_violation_mask);
-  CUDA_CHECK(cudaFree(d_violation_mask));
+  free((int*)h_violation_mask);
+  CUDA_CHECK(cudaFree((int*)d_violation_mask));
 
   // Liberates GPU memory used to store roots of F(omega_eff)=0
-  CUDA_CHECK(cudaFree(d_omega_eff));
-
-  // Close the gnuplot pipe and the data file cleanly.
-  // 'exit' tells gnuplot to quit; fflush makes sure the command is
-  // sent; pclose waits for gnuplot to terminate and closes the pipe.
-  // fclose flushes and closes the data file.
-  fprintf(gp_pipe, "exit\n");
-  fflush(gp_pipe);
-  pclose(gp_pipe);
-  fclose(data_file);
+  CUDA_CHECK(cudaFree((double*)d_omega_eff));
 
   // PHYSICSCHECKER checkout
   cout<<"Memory freed PHYSICSCHECKER(CPU+GPU)."<<endl;
@@ -132,55 +89,17 @@ PHYSICSCHECKER::~PHYSICSCHECKER(void){
 // ===========================================================
 // doubleCheckPhysics-PHYSICSCHECKER
 // ===========================================================
-void PHYSICSCHECKER::doubleCheckPhysics(int t,int offset){
-  //km->launchComputeErrors(lbm->d_f,lbm->d_rho,lbm->d_jx,lbm->d_jy,lbm->d_rho_e,lbm->d_h,lbm->d_feq,d_mass_err,d_momX_err,d_momY_err,d_energy_err,d_hfhfeq_diff);
-
-
-  // Write one row of diagnostics to the data file for this time step.
-  // For each macroscopic error array (mass, x-momentum, y-momentum,
-  // energy, entropy), find its min and max and print them.
-  // The row format is:
-  //   t  mass_min mass_max  momX_min momX_max  momY_min momY_max
-  //      energy_min energy_max  entropy_min entropy_max
-  // fflush ensures the file is up to date before gnuplot reads it
-  double min_val, max_val;
-  fprintf((FILE*)data_file," %d",(int)t);
-  km->findMinMax(d_mass_diff,(double*)&min_val,(double*)&max_val,(int)offset);
-  fprintf((FILE*)data_file," %e %e",(double)min_val,(double)max_val);
-  km->findMinMax(d_momX_diff,(double*)&min_val,(double*)&max_val,(int)offset);
-  fprintf((FILE*)data_file," %e %e",(double)min_val,(double)max_val);
-  km->findMinMax(d_momY_diff,(double*)&min_val,(double*)&max_val,(int)offset);
-  fprintf((FILE*)data_file," %e %e",(double)min_val,(double)max_val);
-  km->findMinMax(d_energy_diff,(double*)&min_val,(double*)&max_val,(int)offset);
-  fprintf((FILE*)data_file," %e %e",(double)min_val,(double)max_val);
-  km->findMinMax((double*)d_entropy_diff,(double*)&min_val,(double*)&max_val,(int)offset);
-  fprintf((FILE*)data_file," %e %e\n",(double)min_val,(double)max_val);
-  fflush((FILE*)data_file);
-  
-  // Tell gnuplot how to display the data file.
-  //
-  // On the very first call, send the full 'plot' command: column 1 is
-  // the time step; the remaining columns come in pairs (min, max) for
-  // each macroscopic error (mass, x-momentum, y-momentum, energy,
-  // entropy). Each pair is drawn as a line with point markers ('w lp')
-  // and labeled in the legend. After that, first_call is set to 0.
-  //
-  // On later calls, just send 'replot', which redraws the same plot
-  // with the updated data file.
-  if(first_call==1){
-    fprintf((FILE*)gp_pipe,"plot 'conservation&(-restriction)_quantities.dat' using 1:2 w lp title 'mass_min', '' using 1:3 w lp title 'mass_max', ");
-    fprintf((FILE*)gp_pipe,"'' using 1:4 w lp title 'momX_min', '' using 1:5 w lp title 'momX_max', ");
-    fprintf((FILE*)gp_pipe,"'' using 1:6 w lp title 'momY_min', '' using 1:7 w lp title 'momY_max', ");
-    fprintf((FILE*)gp_pipe,"'' using 1:8 w lp title 'energy_min', '' using 1:9 w lp title 'energy_max', ");
-    fprintf((FILE*)gp_pipe,"'' using 1:10 w lp title 'entropy_min', '' using 1:11 w lp title 'entropy_max'\n");
-    fflush((FILE*)gp_pipe);
-    first_call = 0;
-  }
-  else{
-    fprintf((FILE*)gp_pipe,"replot\n");
-    fflush((FILE*)gp_pipe);
-  }
-}
+void PHYSICSCHECKER::collisionConservationRestrictionDifferences(int t){
+  // Compute the per-site differences between the current macroscopic
+  // fields and their equilibrium values, and write them into the
+  // d_*_diff arrays:
+  //   d_mass_diff    |rho - rho_eq|
+  //   d_momX_diff    |jx  - jx_eq |
+  //   d_momY_diff    |jy  - jy_eq |
+  //   d_energy_diff  |E   - E_eq  |
+  //   d_entropy_diff  h   - h_eq   (signed; < 0 is a violation)
+  km->launchComputeCollisionErrors((double*)lbm->d_f,(double*)lbm->d_rho,(double*)lbm->d_jx,(double*)lbm->d_jy,(double*)lbm->d_rho_e,(double*)lbm->d_h,(double*)lbm->d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff);
+ }
 
 // ===========================================================
 // countViolations-PHYSICSCHECKER
@@ -206,11 +125,21 @@ int PHYSICSCHECKER::countViolations(void){
 // ===========================================================
 // conservationRestrictionViolations-PHYSICSCHECKER
 // ===========================================================
-void PHYSICSCHECKER::conservationRestrictionViolations(int t,int offset){  
-  // Compute conservation and restriction differences  
-  km->launchComputeLocalErrors(lbm->d_f,lbm->d_rho,lbm->d_jx,lbm->d_jy,lbm->d_rho_e,lbm->d_h,lbm->d_feq,d_mass_diff,d_momX_diff,d_momY_diff,d_energy_diff,d_entropy_diff,offset);
-
-  // Mark entropy violations
+void PHYSICSCHECKER::conservationRestrictionViolations(int t,int offset){
+  // Compute the per-site differences between the post-collision state
+  // (offset) and the pre-collision state (offset 0), and store them:
+  //   d_mass_diff     |rho(offset)   - rho(0)|
+  //   d_momX_diff     |jx(offset)    - jx(0) |
+  //   d_momY_diff     |jy(offset)    - jy(0) |
+  //   d_energy_diff   |rho_e(offset) - rho_e(0)|
+  //   d_entropy_diff  h(0) - h(offset) (signed; < 0 means h increased,i.e. Violation)
+  km->launchComputeLocalErrors((double*)lbm->d_f,(double*)lbm->d_rho,(double*)lbm->d_jx,(double*)lbm->d_jy,(double*)lbm->d_rho_e,(double*)lbm->d_h,(double*)lbm->d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff,(int)offset);
+  
+  // Scan the entropy-difference array and flag each site where the
+  // entropy restriction is violated. Because d_entropy_diff is stored
+  // as h_pre-h_post, a violation (h_post>h_pre) shows up as a negative
+  // value, so any site with d_entropy_diff < 0 gets its d_violation_mask
+  // entry set to 1. Sites that pass are set to 0.
   km->launchMarkEntropyViolations((double*)d_entropy_diff,(int*)d_violation_mask,(int)offset);
 }
 
@@ -218,12 +147,19 @@ void PHYSICSCHECKER::conservationRestrictionViolations(int t,int offset){
 // applyELBM-PHYSICSCHECKER
 // ===========================================================
 void PHYSICSCHECKER::applyELBM(int offset){
-  // Find omega_eff
+  // For every site marked in d_violation_mask, solve the entropy
+  // condition H(omega_eff) = 0 with the Newton-Bisection hybrid method
+  // and store the resulting omega_eff in d_omega_eff. Sites without a
+  // violation are left untouched, since the entropic collision kernel
+  // only reads d_omega_eff where d_violation_mask == 1.
   km->launchFindOmegaEff((double*)lbm->d_f,(double*)lbm->d_feq,(double*)d_omega_eff,(int*)d_violation_mask,(int)offset);
 
-  // Apply collision
+  // Redo the collision at the violating sites using the corrected
+  // omega_eff instead of the BGK omega, so the entropy restriction
+  // is respected there. Non_violating sites are left as they are.
   km->launchEntropicCollision((double*)lbm->d_f,(double*)lbm->d_feq,(double*)d_omega_eff,(int*)d_violation_mask,(int)offset);
 
-  // Compute post-collision macros
+  // Recompute the macroscopic fields at the offset, since the entropic
+  // collision just changed the distribution function
   km->launchComputeMacros((double*)lbm->d_f,(double*)lbm->d_rho,(double*)lbm->d_jx,(double*)lbm->d_jy,(double*)lbm->d_rho_e,(double*)lbm->d_h,(int)offset);
 }

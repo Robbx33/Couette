@@ -161,14 +161,14 @@ __global__ void findMinMaxKernel(double *d_data,double *d_min,double *d_max,int 
 // =========================================================================
 // FILL VBO KERNEL (For 3D surface)
 // =========================================================================
-__global__ void renderAndfillKernel(uchar4 *d_color,double *d_positions,double *d_uv,double *d_data,double offset,double scale){
+__global__ void renderAndfillKernel(uchar4 *d_color,double *vbo_positions_ptr,double *vbo_uv_ptr,double *d_data,double center,double scale){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
   
   if(i<Lx && j<Ly){
     int id = i + j*Lx;
     // normalized maps your entire data range to [-1, 1]:
-    double normalized = (*(d_data+id)-offset)/scale;
+    double normalized = (*(d_data+id)-center)/scale;
     
     // Clamp for color
     double val = normalized;
@@ -210,12 +210,12 @@ __global__ void renderAndfillKernel(uchar4 *d_color,double *d_positions,double *
     // Height
     double scale_pos = 0.02;
     double height_scale = 2.0;
-    *(d_positions+id*3+0) = (i-Lx/2.0)*scale_pos;
-    *(d_positions+id*3+1) = (j-Ly/2.0)*scale_pos;
-    *(d_positions+id*3+2) = normalized*height_scale;
+    *(vbo_positions_ptr+id*3+0) = (i-Lx/2.0)*scale_pos;
+    *(vbo_positions_ptr+id*3+1) = (j-Ly/2.0)*scale_pos;
+    *(vbo_positions_ptr+id*3+2) = normalized*height_scale;
     
-    *(d_uv+id*2+0) = (double)i/(Lx-1);
-    *(d_uv+id*2+1) = (double)j/(Ly-1);
+    *(vbo_uv_ptr+id*2+0) = (double)i/(Lx-1);
+    *(vbo_uv_ptr+id*2+1) = (double)j/(Ly-1);
   }
 }
 

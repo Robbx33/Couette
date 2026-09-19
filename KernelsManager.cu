@@ -1,26 +1,15 @@
 // KernelsManager.cu
 #include "KernelsManager.h"
 
-KernelsManager::KernelsManager(Visualizer *Roberto){
-  viz = Roberto;
+KernelsManager::KernelsManager(void){
   // 2D kernel launch configs
   blockSize2D = dim3(THREADS_PER_BLOCK_X,THREADS_PER_BLOCK_Y,1);
   gridSize2D  = dim3((Lx+blockSize2D.x-1)/blockSize2D.x,(Ly+blockSize2D.y-1)/blockSize2D.y,1);
   // 3D kernel launch configs
   blockSize3D = dim3(THREADS_PER_BLOCK_X,THREADS_PER_BLOCK_Y,Q);
   gridSize3D  = dim3((Lx+blockSize3D.x-1)/blockSize3D.x,(Ly+blockSize3D.y-1)/blockSize3D.y,(Q+blockSize3D.z-1)/blockSize3D.z);
-  
-  h_min_temp = (double*)malloc(gridSize2D.x*gridSize2D.y*sizeof(double));
-  h_max_temp = (double*)malloc(gridSize2D.x*gridSize2D.y*sizeof(double));
-  CUDA_CHECK(cudaMalloc((void**)&d_min_temp,gridSize2D.x*gridSize2D.y*sizeof(double)));
-  CUDA_CHECK(cudaMalloc((void**)&d_max_temp,gridSize2D.x*gridSize2D.y*sizeof(double)));
 }
-
 KernelsManager::~KernelsManager(void){
-  free(h_min_temp);
-  free(h_max_temp);
-  cudaFree(d_min_temp);
-  cudaFree(d_max_temp);
 }
 
 void KernelsManager::launchComputeMacros(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,int offset){
@@ -40,47 +29,16 @@ void KernelsManager::launchComputeCollisionErrors(double *d_f,double *d_rho,doub
   SYNC_CHECK();
 }
 
-void KernelsManager::findMinMax(double *d_data,double *min_val,double *max_val,int offset){
-  findMinMaxKernel<<<gridSize2D,blockSize2D>>>((double*)d_data,(double*)d_min_temp,(double*)d_max_temp,(int)offset);
+void KernelsManager::launchFindMinMax(double *d_data,double *d_min,double *d_max,int offset){
+  findMinMaxKernel<<<gridSize2D,blockSize2D>>>((double*)d_data,(double*)d_min,(double*)d_max,(int)offset);
   KERNEL_CHECK();
   SYNC_CHECK();
-  
-  CUDA_CHECK(cudaMemcpy((void*)(h_min_temp+0),(const void*)(d_min_temp+0),(size_t)gridSize2D.x*gridSize2D.y*sizeof(double),cudaMemcpyDeviceToHost));
-  CUDA_CHECK(cudaMemcpy((void*)(h_max_temp+0),(const void*)(d_max_temp+0),(size_t)gridSize2D.x*gridSize2D.y*sizeof(double),cudaMemcpyDeviceToHost));
-  
-  *min_val = *(h_min_temp+0);
-  *max_val = *(h_max_temp+0);
-  for(int idx=0;idx<gridSize2D.x*gridSize2D.y;idx++){
-    if(*(h_min_temp+idx)<*min_val){
-      *min_val = *(h_min_temp+idx);
-    }
-    if(*(h_max_temp+idx)>*max_val){
-      *max_val = *(h_max_temp+idx);
-    }
-  }
 }
 
-void KernelsManager::launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_data,int t){
-  double min_val,max_val;
-  findMinMax((double*)d_data,(double*)&min_val,(double*)&max_val,0);
-  /*
-    offset = the center of your data range
-    scale = the radius of your data range (half the width)
-    (min_val) → 5.0 (offset) → 7.5 (scale) → 2.5 (max_val) → 10.0
-  */
-  double offset = (min_val+max_val)/2.0;
-  double scale = (max_val-min_val)/2.0;
-  if(scale<1e-30){
-    scale = 1.0;
-  }
-  
-  viz->copyColorToTexture((uchar4*)d_color);
-  viz->mapVBOs((double**)&d_positions,(double**)&d_uv);
-  renderAndfillKernel<<<gridSize2D,blockSize2D>>>((uchar4*)d_color,(double*)d_positions,(double*)d_uv,(double*)d_data,(double)offset,(double)scale);
+void KernelsManager::launchRenderAndFill(uchar4 *d_color,double *vbo_positions_ptr,double *vbo_uv_ptr,double *d_data,double center,double scale){
+  renderAndfillKernel<<<gridSize2D,blockSize2D>>>((uchar4*)d_color,(double*)vbo_positions_ptr,(double*)vbo_uv_ptr,(double*)d_data,(double)center,(double)scale);
   KERNEL_CHECK();
   SYNC_CHECK();
-  viz->unmapVBOs();
-  viz->display((int)t,(double)min_val,(double)max_val);
 }
 
 void KernelsManager::launchCollision(double *d_f,double *d_feq,int offset){

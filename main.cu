@@ -9,12 +9,12 @@
 using namespace std;
 
 int main(int argc,char **argv){
-
-  Visualizer Roberto((int)argc,(char**)argv);
-  KernelsManager Gargantua((Visualizer*)&Roberto);
+  KernelsManager Gargantua;
   LATTICEBOLTZMANN Gauss((KernelsManager*)&Gargantua);
   PHYSICSCHECKER Noah((LATTICEBOLTZMANN*)&Gauss,(KernelsManager*)&Gargantua);
-  RESULTS Jeremias((LATTICEBOLTZMANN*)&Gauss);
+  RESULTS Jeremias((LATTICEBOLTZMANN*)&Gauss,(PHYSICSCHECKER*)&Noah,(KernelsManager*)&Gargantua);
+  //Visualizer Roberto((int)argc,(char**)argv,(PHYSICSCHECKER*)&Noah,(RESULTS*)&Jeremias,(KernelsManager*)&Gargantua);
+
 
   cout<<"=== LBM Simulation Started ==="<<endl;
   cout<<"Grid: "<<Lx<<"x"<<Ly<<", Q="<<Q<<endl;
@@ -24,20 +24,20 @@ int main(int argc,char **argv){
   for(int t=0;t<2000;t++){
     Gauss.computeMacros(0);
     Gauss.computeFeq();
-
-    if(t%1==0){
-      Gargantua.launchComputeCollisionErrors((double*)Gauss.get_d_f(),(double*)Gauss.get_d_rho(),(double*)Gauss.get_d_jx(),(double*)Gauss.get_d_jy(),(double*)Gauss.get_d_rho_e(),(double*)Gauss.get_d_h(),(double*)Gauss.get_d_feq(),(double*)Noah.get_d_mass_diff(),(double*)Noah.get_d_momX_diff(),(double*)Noah.get_d_momY_diff(),(double*)Noah.get_d_energy_diff(),(double*)Noah.get_d_entropy_diff());
-      Noah.doubleCheckPhysics((int)t,0);
-      //Gargantua.launchRenderAndFill((uchar4*)Roberto.get_d_color(),(double*)Roberto.get_d_positions(),(double*)Roberto.get_d_uv(),(double*)Noah.get_d_entropy_diff(),(int)t);
-      //Jeremias.plotMacros((int)t);
-    }
+    
+    //if(t%1==0){
+      //Noah.collisionConservationRestrictionDifferences((int)t);
+      //Roberto.plotConservationRestriction((int)t,0);
+      //Roberto.renderAndDisplay((double*)Gauss.get_d_h(),(int)t);
+      //Roberto.plotMacros((int)t);
+    //}
     
     Gauss.Collision(1);
     Noah.conservationRestrictionViolations((int)t,1);
-    //Noah.doubleCheckPhysics((int)t,1);
+    //Roberto.plotConservationRestriction((int)t,1);
     Noah.applyELBM(1);
-    Noah.conservationRestrictionViolations((int)t,1);
-    //Noah.doubleCheckPhysics((int)t,1);
+    //Noah.conservationRestrictionViolations((int)t,1);
+    //Roberto.plotConservationRestriction((int)t,1);
     
     Gauss.Stream(1);
   }

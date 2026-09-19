@@ -5,21 +5,13 @@
 #include "Constants.h"
 #include "error.h"
 #include "Kernels.cuh"
-#include "Visualizer.h"
 
 class KernelsManager{
  private:
-  Visualizer *viz;
-  
   dim3 blockSize2D,gridSize2D;
   dim3 blockSize3D,gridSize3D;
-
-  double *h_min_temp;
-  double *h_max_temp;
-  double *d_min_temp;
-  double *d_max_temp;
  public:
-  KernelsManager(Visualizer *Roberto);
+  KernelsManager(void);
   ~KernelsManager(void);
 
   // Launch kernels
@@ -27,8 +19,8 @@ class KernelsManager{
   void launchComputeFeq(double *d_rho,double *d_jx,double *d_jy,double *d_feq);
   
   void launchComputeCollisionErrors(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double* d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff);
-  void findMinMax(double *d_data,double *min_val,double *max_val,int offset);
-  void launchRenderAndFill(uchar4 *d_color,double *d_positions,double *d_uv,double *d_data,int t);
+  void launchFindMinMax(double *d_data,double *d_min,double *d_max,int offset);
+  void launchRenderAndFill(uchar4 *d_color,double *vbo_positions_ptr,double *vbo_uv_ptr,double *d_data,double center,double scale);
   
   void launchCollision(double *d_f,double *d_feq,int offset);
 
@@ -38,8 +30,6 @@ class KernelsManager{
   void launchEntropicCollision(double *d_f,double *d_feq,double *d_omega_eff,int *d_violation_mask,int offset);
   
   void launchStream(double *d_f,int offset);
-
-  
   };
 
 #endif
