@@ -98,7 +98,7 @@ void PHYSICSCHECKER::collisionConservationRestrictionDifferences(int t){
   //   d_momY_diff    |jy  - jy_eq |
   //   d_energy_diff  |E   - E_eq  |
   //   d_entropy_diff  h   - h_eq   (signed; < 0 is a violation)
-  km->launchComputeCollisionErrors((double*)lbm->d_f,(double*)lbm->d_rho,(double*)lbm->d_jx,(double*)lbm->d_jy,(double*)lbm->d_rho_e,(double*)lbm->d_h,(double*)lbm->d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff);
+  km->launchComputeCollisionDifferences((double*)lbm->d_f,(double*)lbm->d_rho,(double*)lbm->d_jx,(double*)lbm->d_jy,(double*)lbm->d_rho_e,(double*)lbm->d_h,(double*)lbm->d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff);
  }
 
 // ===========================================================
@@ -133,7 +133,7 @@ void PHYSICSCHECKER::conservationRestrictionViolations(int t,int offset){
   //   d_momY_diff     |jy(offset)    - jy(0) |
   //   d_energy_diff   |rho_e(offset) - rho_e(0)|
   //   d_entropy_diff  h(0) - h(offset) (signed; < 0 means h increased,i.e. Violation)
-  km->launchComputeLocalErrors((double*)lbm->d_f,(double*)lbm->d_rho,(double*)lbm->d_jx,(double*)lbm->d_jy,(double*)lbm->d_rho_e,(double*)lbm->d_h,(double*)lbm->d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff,(int)offset);
+  km->launchComputeLocalDifferences((double*)lbm->d_f,(double*)lbm->d_rho,(double*)lbm->d_jx,(double*)lbm->d_jy,(double*)lbm->d_rho_e,(double*)lbm->d_h,(double*)lbm->d_feq,(double*)d_mass_diff,(double*)d_momX_diff,(double*)d_momY_diff,(double*)d_energy_diff,(double*)d_entropy_diff,(int)offset);
   
   // Scan the entropy-difference array and flag each site where the
   // entropy restriction is violated. Because d_entropy_diff is stored

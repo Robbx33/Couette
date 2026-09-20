@@ -91,7 +91,7 @@ __global__ void computeFeqKernel(double *d_rho,double *d_jx,double *d_jy,double 
 // =========================================================================
 // COMPUTE COLLISION ERRORS KERNEL (All diagnostics on GPU)
 // =========================================================================
-__global__ void computeCollisionErrorsKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff){
+__global__ void computeCollisionDifferencesKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
   
@@ -113,10 +113,10 @@ __global__ void computeCollisionErrorsKernel(double *d_f,double *d_rho,double *d
     
     double energy_feq = rhoE_feq - 0.5*rho_feq*(jx_feq*jx_feq/(rho_feq*rho_feq)+jy_feq*jy_feq/(rho_feq*rho_feq));
     
-    *(d_mass_diff+id) = fabs(rho_feq-*(d_rho+id));
-    *(d_momX_diff+id) = fabs(jx_feq-*(d_jx+id));
-    *(d_momY_diff+id) = fabs(jy_feq-*(d_jy+id));
-    *(d_energy_diff+id) = fabs(energy_feq-*(d_rho_e+id));
+    *(d_mass_diff+id) = fabs(*(d_rho+id)-rho_feq);
+    *(d_momX_diff+id) = fabs(*(d_jx+id)-jx_feq);
+    *(d_momY_diff+id) = fabs(*(d_jy+id)-jy_feq);
+    *(d_energy_diff+id) = fabs(*(d_rho_e+id)-energy_feq);
     *(d_entropy_diff+id) = *(d_h+id)-hfeq;
   }
 }
@@ -236,16 +236,16 @@ __global__ void collisionKernel(double *d_f,double *d_feq,int offset){
 // =========================================================================
 // COMPUTE LOCAL ERRORS KERNEL
 // =========================================================================
-__global__ void computeLocalErrorsKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff,int offset){
+__global__ void computeLocalDifferencesKernel(double *d_f,double *d_rho,double *d_jx,double *d_jy,double *d_rho_e,double *d_h,double *d_feq,double *d_mass_diff,double *d_momX_diff,double *d_momY_diff,double *d_energy_diff,double *d_entropy_diff,int offset){
   int i = threadIdx.x + blockIdx.x*blockDim.x;
   int j = threadIdx.y + blockIdx.y*blockDim.y;
 
   if(i<Lx && j<Ly){
     int id = i + j*Lx;
-    *(d_mass_diff+id+offset*Lx*Ly) = fabs(*(d_rho+id+offset*Lx*Ly)-*(d_rho+id));
-    *(d_momX_diff+id+offset*Lx*Ly) = fabs(*(d_jx+id+offset*Lx*Ly)-*(d_jx+id));
-    *(d_momY_diff+id+offset*Lx*Ly) = fabs(*(d_jy+id+offset*Lx*Ly)-*(d_jy+id));
-    *(d_energy_diff+id+offset*Lx*Ly) = fabs(*(d_rho_e+id+offset*Lx*Ly)-*(d_rho_e+id));
+    *(d_mass_diff+id+offset*Lx*Ly) = fabs(*(d_rho+id)-*(d_rho+id+offset*Lx*Ly));
+    *(d_momX_diff+id+offset*Lx*Ly) = fabs(*(d_jx+id)-*(d_jx+id+offset*Lx*Ly));
+    *(d_momY_diff+id+offset*Lx*Ly) = fabs(*(d_jy+id)-*(d_jy+id+offset*Lx*Ly));
+    *(d_energy_diff+id+offset*Lx*Ly) = fabs(*(d_rho_e+id)-*(d_rho_e+id+offset*Lx*Ly));
     *(d_entropy_diff+id+offset*Lx*Ly) = *(d_h+id)-*(d_h+id+offset*Lx*Ly);
   }
 }
